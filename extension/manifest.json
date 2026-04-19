@@ -1,0 +1,64 @@
+{
+  "manifest_version": 3,
+  "name": "HireMind Apply",
+  "version": "0.1.0",
+  "description": "Job application orchestration assistant — autofill, review, and track applications.",
+
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "tabs"
+  ],
+
+  "host_permissions": [
+    "https://boards.greenhouse.io/*",
+    "https://*.greenhouse.io/*",
+    "https://jobs.lever.co/*",
+    "https://*.lever.co/*",
+    "https://*.myworkdayjobs.com/*",
+    "https://*.myworkday.com/*",
+    "https://jobs.ashbyhq.com/*",
+    "http://localhost:8000/*"
+  ],
+
+  "background": {
+    "service_worker": "background/service_worker.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://boards.greenhouse.io/*",
+        "https://*.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://*.lever.co/*",
+        "https://*.myworkdayjobs.com/*",
+        "https://*.myworkday.com/*",
+        "https://jobs.ashbyhq.com/*"
+      ],
+      "js": [
+        "content/detector.js",
+        "utils/dom_parser.js",
+        "utils/field_matcher.js",
+        "utils/api_client.js",
+        "content/mapper.js",
+        "content/autofill.js",
+        "content/injector_ui.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "action": {
+    "default_popup": "ui/overlay.html",
+    "default_title": "HireMind"
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
