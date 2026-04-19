@@ -1,17 +1,91 @@
+import io
+import json
 import os
 import anthropic
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from supabase import Client
 from typing import List
 
 from backend.db.database import get_db
 from backend.models.document import (
-    ResumeBaseOut, ResumeVariantOut, CoverLetterOut, GenerateDocsRequest
+    ResumeBaseOut, ResumeVariantOut, CoverLetterOut, GenerateDocsRequest, SkillsSuggestRequest
 )
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 _claude = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+
+def _extract_pdf_text(content: bytes) -> str:
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(content))
+        return "\n".join(page.extract_text() or "" for page in reader.pages).strip()
+    except Exception:
+        return ""
+
+
+def _extract_docx_text(content: bytes) -> str:
+    try:
+        from docx import Document
+        doc = Document(io.BytesIO(content))
+        return "\n".join(p.text for p in doc.paragraphs).strip()
+    except Exception:
+        return ""
+
+
+@router.post("/resumes/upload", status_code=201)
+async def upload_resume(file: UploadFile = File(...), db: Client = Depends(get_db)):
+    filename = file.filename or "resume"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("pdf", "docx"):
+        raise HTTPException(status_code=400, detail="Only PDF and DOCX files are supported")
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File exceeds 10MB limit")
+
+    text = _extract_pdf_text(content) if ext == "pdf" else _extract_docx_text(content)
+
+    result = db.table("resume_bases").insert({"name": filename, "content": text}).execute()
+    row = result.data[0]
+    return {"id": row["id"], "name": row["name"], "content": text}
+
+
+@router.post("/skills/suggest")
+def suggest_skills(payload: SkillsSuggestRequest):
+    if not payload.job_title and not payload.resume_text:
+        return {"skills": []}
+
+    prompt = f"""Based on the job title and resume below, return 10–12 highly relevant professional skills as a JSON array of strings.
+
+Job Title: {payload.job_title}
+Resume:
+{payload.resume_text[:3000]}
+
+Rules:
+- Include skills that appear in the resume or are closely relevant to the job title
+- Mix technical skills, tools, and domain expertise
+- Keep each skill concise (1–3 words)
+- Return ONLY a JSON array, e.g. ["Skill A", "Skill B", ...]"""
+
+    response = _claude.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    raw = response.content[0].text.strip()
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+
+    try:
+        skills = json.loads(raw)
+        if isinstance(skills, list):
+            return {"skills": [str(s) for s in skills]}
+    except Exception:
+        pass
+    return {"skills": []}
 
 
 @router.get("/resumes", response_model=List[ResumeBaseOut])
@@ -67,7 +141,6 @@ Format:
         "content": cl_content,
     }).execute().data[0]
 
-    # Update the matching application record to ready
     db.table("applications").update({
         "resume_variant_id": variant["id"],
         "cover_letter_id": cover_letter["id"],

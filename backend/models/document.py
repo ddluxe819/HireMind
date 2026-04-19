@@ -32,3 +32,8 @@ class GenerateDocsRequest(BaseModel):
     title: str
     job_description: str
     resume_base_id: str
+
+
+class SkillsSuggestRequest(BaseModel):
+    job_title: str
+    resume_text: str

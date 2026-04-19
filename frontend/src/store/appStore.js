@@ -4,6 +4,7 @@ import { SAMPLE_JOBS, SAMPLE_APPS } from '../data/sampleData'
 const API = '/api'
 const TWEAKS_KEY = 'hm_tweaks'
 const SCREEN_KEY = 'hm_screen'
+const PROFILE_KEY = 'hm_profile'
 
 const DEFAULT_TWEAKS = { accentColor: '#5047e5', showMatchScore: true }
 
@@ -15,9 +16,14 @@ function loadScreen() {
   return localStorage.getItem(SCREEN_KEY) || 'onboarding'
 }
 
+function loadProfile() {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || null } catch { return null }
+}
+
 export const useAppStore = create((set, get) => ({
   screen: loadScreen(),
   tweaks: loadTweaks(),
+  profile: loadProfile(),
   jobs: [],
   applications: [],
   loading: false,
@@ -25,6 +31,11 @@ export const useAppStore = create((set, get) => ({
   setScreen: (screen) => {
     localStorage.setItem(SCREEN_KEY, screen)
     set({ screen })
+  },
+
+  setProfile: (profile) => {
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)) } catch {}
+    set({ profile })
   },
 
   updateTweak: (key, val) => {
@@ -36,7 +47,17 @@ export const useAppStore = create((set, get) => ({
   fetchJobs: async () => {
     set({ loading: true })
     try {
-      const res = await fetch(`${API}/jobs/discover`)
+      const profile = get().profile
+      let url = `${API}/jobs/discover`
+      if (profile) {
+        const params = new URLSearchParams()
+        if (profile.title) params.set('title', profile.title)
+        if (profile.skills?.length) params.set('skills', profile.skills.join(','))
+        if (profile.experience) params.set('experience', profile.experience)
+        const qs = params.toString()
+        if (qs) url += '?' + qs
+      }
+      const res = await fetch(url)
       if (!res.ok) throw new Error('API unavailable')
       const jobs = await res.json()
       set({ jobs: jobs.length ? jobs : SAMPLE_JOBS })
@@ -115,6 +136,6 @@ export const useAppStore = create((set, get) => ({
 
   resetOnboarding: () => {
     localStorage.clear()
-    set({ screen: 'onboarding', tweaks: DEFAULT_TWEAKS, jobs: [], applications: [] })
+    set({ screen: 'onboarding', tweaks: DEFAULT_TWEAKS, profile: null, jobs: [], applications: [] })
   },
 }))
