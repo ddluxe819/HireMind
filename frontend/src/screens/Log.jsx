@@ -26,9 +26,12 @@ function PipelineBar({ status }) {
   )
 }
 
+const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api'
+
 function ExtensionOverlay({ app, onClose, accent }) {
   const [step, setStep] = useState(0)
   const [regenerating, setRegenerating] = useState(false)
+  const [docPanel, setDocPanel] = useState(null) // { type: 'resume'|'cl', id, content, editing, editText, saving, error, loading }
   const { profile, generateDocs, updateApplicationStatus } = useAppStore()
 
   const handleRegenerate = async () => {
@@ -42,6 +45,43 @@ function ExtensionOverlay({ app, onClose, accent }) {
     setStep(1)
   }
 
+  const openDoc = async (type, editing) => {
+    const id = type === 'resume' ? app.resume_variant_id : app.cover_letter_id
+    if (!id) return
+    setDocPanel({ type, id, content: '', editing, editText: '', saving: false, error: '', loading: true })
+    try {
+      const url = type === 'resume'
+        ? `${API}/documents/variants/${id}`
+        : `${API}/documents/cover-letters/${id}`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('Failed to load document')
+      const data = await res.json()
+      setDocPanel((p) => ({ ...p, content: data.content, editText: data.content, loading: false }))
+    } catch (e) {
+      setDocPanel((p) => ({ ...p, error: e.message, loading: false }))
+    }
+  }
+
+  const saveDoc = async () => {
+    if (!docPanel) return
+    setDocPanel((p) => ({ ...p, saving: true, error: '' }))
+    try {
+      const url = docPanel.type === 'resume'
+        ? `${API}/documents/variants/${docPanel.id}`
+        : `${API}/documents/cover-letters/${docPanel.id}`
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: docPanel.editText }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      const data = await res.json()
+      setDocPanel((p) => ({ ...p, content: data.content, editText: data.content, editing: false, saving: false }))
+    } catch (e) {
+      setDocPanel((p) => ({ ...p, error: e.message, saving: false }))
+    }
+  }
+
   const fields = [
     { label: 'Full Name',    value: profile?.name || 'Not set',          ok: Boolean(profile?.name) },
     { label: 'Email',        value: profile?.email || 'Not set',         ok: Boolean(profile?.email) },
@@ -49,6 +89,11 @@ function ExtensionOverlay({ app, onClose, accent }) {
     { label: 'Resume',       value: app.resume_variant_id ? `${(app.company || 'job').toLowerCase().replace(/\s+/g, '_')}_resume.pdf` : 'Not generated', ok: Boolean(app.resume_variant_id) },
     { label: 'Cover Letter', value: app.cover_letter_id ? 'Attached' : 'Not generated', ok: Boolean(app.cover_letter_id) },
     { label: 'LinkedIn URL', value: profile?.linkedin_url || 'Not set',  ok: Boolean(profile?.linkedin_url) },
+  ]
+
+  const docs = [
+    { label: 'Resume',       val: app.resumeV || 'v1',        icon: '📄', type: 'resume', id: app.resume_variant_id },
+    { label: 'Cover Letter', val: 'AI generated',              icon: '✉️', type: 'cl',     id: app.cover_letter_id },
   ]
 
   return (
@@ -72,17 +117,89 @@ function ExtensionOverlay({ app, onClose, accent }) {
             </div>
           </div>
 
-          {step === 0 ? (
+          {docPanel ? (
+            <div style={{ paddingBottom: 24 }}>
+              {/* Doc panel header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <button
+                  onClick={() => setDocPanel(null)}
+                  style={{ background: '#f6f5f0', border: 'none', borderRadius: 8, padding: '5px 10px', fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#6b6f7e', cursor: 'pointer' }}>
+                  ← Back
+                </button>
+                <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 14, color: '#0c0e1c', flex: 1 }}>
+                  {docPanel.type === 'resume' ? 'Resume' : 'Cover Letter'}
+                </span>
+                {!docPanel.editing && !docPanel.loading && !docPanel.error && (
+                  <button
+                    onClick={() => setDocPanel((p) => ({ ...p, editing: true }))}
+                    style={{ background: '#f6f5f0', border: 'none', borderRadius: 8, padding: '5px 10px', fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#6b6f7e', cursor: 'pointer' }}>
+                    Edit
+                  </button>
+                )}
+              </div>
+
+              {docPanel.error && (
+                <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#ef4444', marginBottom: 12 }}>{docPanel.error}</div>
+              )}
+
+              {docPanel.loading ? (
+                <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8', padding: '24px 0', textAlign: 'center' }}>Loading…</div>
+              ) : docPanel.editing ? (
+                <>
+                  <textarea
+                    value={docPanel.editText}
+                    onChange={(e) => setDocPanel((p) => ({ ...p, editText: e.target.value }))}
+                    style={{
+                      width: '100%', minHeight: 320, borderRadius: 12, border: '1.5px solid #e0dfd8',
+                      padding: 12, fontFamily: 'DM Sans, sans-serif', fontSize: 12, lineHeight: 1.6,
+                      color: '#0c0e1c', background: '#fafaf8', resize: 'vertical', boxSizing: 'border-box',
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <button
+                      onClick={() => setDocPanel((p) => ({ ...p, editing: false, editText: p.content }))}
+                      style={{ flex: 1, padding: 11, borderRadius: 12, border: '1px solid #e0dfd8', background: '#f6f5f0', color: '#6b6f7e', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveDoc}
+                      disabled={docPanel.saving}
+                      style={{ flex: 2, padding: 11, borderRadius: 12, border: 'none', background: docPanel.saving ? '#c0bfb8' : accent, color: '#fff', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, cursor: docPanel.saving ? 'default' : 'pointer' }}>
+                      {docPanel.saving ? 'Saving…' : 'Save Changes'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={{
+                  background: '#fafaf8', borderRadius: 12, padding: 14, border: '1px solid #f0efe9',
+                  fontFamily: 'DM Sans, sans-serif', fontSize: 12, lineHeight: 1.7, color: '#3d4050',
+                  whiteSpace: 'pre-wrap', maxHeight: 400, overflowY: 'auto',
+                }}>
+                  {docPanel.content || <span style={{ color: '#9a9fa8' }}>No content available.</span>}
+                </div>
+              )}
+            </div>
+          ) : step === 0 ? (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-                {[['Resume', app.resumeV || 'v1', '📄'], ['Cover Letter', 'AI generated', '✉️']].map(([label, val, icon]) => (
+                {docs.map(({ label, val, icon, type, id }) => (
                   <div key={label} style={{ background: '#f6f5f0', borderRadius: 12, padding: 12 }}>
                     <div style={{ fontSize: 18, marginBottom: 4 }}>{icon}</div>
                     <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, color: '#0c0e1c' }}>{label}</div>
                     <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: '#9a9fa8', marginBottom: 8 }}>{val}</div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button style={{ flex: 1, fontSize: 11, fontFamily: 'DM Sans, sans-serif', padding: '4px 0', borderRadius: 8, border: '1px solid #ddd', background: '#fff', color: accent, fontWeight: 600 }}>View</button>
-                      <button style={{ flex: 1, fontSize: 11, fontFamily: 'DM Sans, sans-serif', padding: '4px 0', borderRadius: 8, border: '1px solid #ddd', background: '#fff', color: '#6b6f7e' }}>Edit</button>
+                      <button
+                        onClick={() => openDoc(type, false)}
+                        disabled={!id}
+                        style={{ flex: 1, fontSize: 11, fontFamily: 'DM Sans, sans-serif', padding: '4px 0', borderRadius: 8, border: '1px solid #ddd', background: '#fff', color: id ? accent : '#c0bfb8', fontWeight: 600, cursor: id ? 'pointer' : 'default' }}>
+                        View
+                      </button>
+                      <button
+                        onClick={() => openDoc(type, true)}
+                        disabled={!id}
+                        style={{ flex: 1, fontSize: 11, fontFamily: 'DM Sans, sans-serif', padding: '4px 0', borderRadius: 8, border: '1px solid #ddd', background: '#fff', color: id ? '#6b6f7e' : '#c0bfb8', cursor: id ? 'pointer' : 'default' }}>
+                        Edit
+                      </button>
                     </div>
                   </div>
                 ))}

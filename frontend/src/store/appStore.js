@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { SAMPLE_JOBS, SAMPLE_APPS } from '../data/sampleData'
+import { SAMPLE_JOBS } from '../data/sampleData'
 
 const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api'
 const TWEAKS_KEY = 'hm_tweaks'
@@ -73,9 +73,9 @@ export const useAppStore = create((set, get) => ({
       const res = await fetch(`${API}/applications/`)
       if (!res.ok) throw new Error('API unavailable')
       const applications = await res.json()
-      set({ applications: applications.length ? applications : SAMPLE_APPS })
+      set({ applications })
     } catch {
-      set({ applications: SAMPLE_APPS })
+      set({ applications: [] })
     }
   },
 
