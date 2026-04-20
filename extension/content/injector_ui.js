@@ -1,35 +1,39 @@
 import { detectPlatform } from './detector.js'
 import { buildFieldMap } from './mapper.js'
 import { autofillForm } from './autofill.js'
-import { fetchResumeVariant, fetchCoverLetter, updateStatus } from '../utils/api_client.js'
+import { updateStatus, appendCustomAnswers } from '../utils/api_client.js'
 
 let applicationRecord = null
+let applicationFields = null
 let overlayEl = null
 
 // Wait for application context from the service worker
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'HIREMIND_APPLICATION_CONTEXT') {
-    applicationRecord = message.payload
+    const payload = message.payload || {}
+    applicationRecord = payload.application || null
+    applicationFields = payload.applicationFields || null
     initialize()
   }
 })
 
 // Also request context on load (tab may have already been processed)
 chrome.runtime.sendMessage({ type: 'HIREMIND_GET_CONTEXT' }, (res) => {
-  if (res?.applicationRecord && !applicationRecord) {
-    applicationRecord = res.applicationRecord
+  if (res?.context && !applicationRecord) {
+    applicationRecord = res.context.application || null
+    applicationFields = res.context.applicationFields || null
     initialize()
   }
 })
 
 async function initialize() {
+  if (!applicationRecord) return
   const detection = detectPlatform()
   if (!detection.isApplicationPage || detection.confidence < 50) return
 
   injectOverlay('detected')
 
-  // Build a stub profile — in production this comes from the application record + backend
-  const profile = await buildProfile()
+  const profile = buildProfile()
   const fieldMap = await buildFieldMap(profile)
 
   if (!fieldMap) {
@@ -39,33 +43,68 @@ async function initialize() {
 
   updateOverlay('ready', { fieldMap, profile })
 
-  // Auto-run autofill
   const results = await autofillForm(fieldMap.mappings, applicationRecord)
   updateOverlay('autofilled', { results, fieldMap })
+
+  // Report unmapped fields back as custom questions for the user to answer in-app.
+  reportCustomQuestions(fieldMap).catch(() => {})
 
   await updateStatus(applicationRecord.id, 'autofilled')
 }
 
-async function buildProfile() {
-  // Fetch resume + cover letter content for the application
-  const profile = {
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    linkedinUrl: '',
-    portfolioUrl: '',
-    location: {},
-    workAuthorization: 'citizen',
-    yearsExperience: '',
-    salaryExpectation: '',
+function buildProfile() {
+  // Reconstruct the profile shape field_matcher expects from stored application_fields.
+  const f = applicationFields?.fields || {}
+  return {
+    firstName: f.firstName || '',
+    lastName: f.lastName || '',
+    email: f.email || '',
+    phone: f.phone || '',
+    linkedinUrl: f.linkedinUrl || '',
+    portfolioUrl: f.portfolioUrl || f.githubUrl || '',
+    location: {
+      city: f.city || '',
+      state: f.state || '',
+      country: f.country || '',
+      zip: f.zip || '',
+    },
+    workAuthorization: f.workAuthorization || '',
+    yearsExperience: f.yearsExperience || '',
+    salaryExpectation: f.salaryExpectation || '',
     resumeVariantId: applicationRecord?.resume_variant_id || null,
     coverLetterId: applicationRecord?.cover_letter_id || null,
   }
+}
 
-  // Load from chrome.storage (populated when user sets up profile in the app)
-  const stored = await chrome.storage.local.get('userProfile')
-  return { ...profile, ...(stored.userProfile || {}) }
+async function reportCustomQuestions({ rawFields, mappings }) {
+  if (!applicationRecord || !rawFields || !mappings) return
+
+  const existingIds = new Set((applicationFields?.custom_answers || []).map((a) => a.id))
+  const detectedAt = new Date().toISOString()
+  const unmapped = []
+
+  mappings.forEach((mapping, i) => {
+    if (mapping.strategy !== 'skip') return
+    if (mapping.fieldType === 'resumeFile') return
+    const raw = rawFields[i]
+    if (!raw) return
+    const question = (raw.label || raw.placeholder || raw.ariaLabel || '').trim()
+    if (!question) return
+    // Use selector as stable id — survives page reloads for the same form.
+    const id = raw.selector
+    if (existingIds.has(id)) return
+    unmapped.push({
+      id,
+      question,
+      answer: '',
+      selector: raw.selector,
+      detected_at: detectedAt,
+    })
+  })
+
+  if (!unmapped.length) return
+  const updated = await appendCustomAnswers(applicationRecord.id, unmapped)
+  if (updated) applicationFields = updated
 }
 
 function injectOverlay(state) {
@@ -122,11 +161,13 @@ function buildFilledState(data, accent) {
   if (!data?.results) return ''
   const filled = data.results.filter((r) => r.status === 'filled')
   const errors = data.results.filter((r) => r.status === 'error')
+  const unmapped = (data.fieldMap?.mappings || []).filter((m) => m.strategy === 'skip' && m.fieldType !== 'resumeFile').length
   return `
     <div style="margin-bottom:12px">
       <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:13px;color:#0c0e1c;margin-bottom:8px">Fields filled</div>
       ${filled.map((r) => `<div style="font-size:12px;color:#059669;margin-bottom:3px">✓ ${r.fieldType}</div>`).join('')}
       ${errors.map((r) => `<div style="font-size:12px;color:#dc2626;margin-bottom:3px">✗ ${r.fieldType}</div>`).join('')}
+      ${unmapped ? `<div style="font-size:12px;color:#b45309;margin-top:6px">⚠ ${unmapped} custom question${unmapped === 1 ? '' : 's'} captured — answer in the HireMind app.</div>` : ''}
     </div>
     <p style="font-size:11px;color:#b0aeb8;margin:0">Review all fields before submitting.</p>
   `
@@ -146,6 +187,5 @@ function buildActions(accent) {
 async function handleSubmit() {
   await updateStatus(applicationRecord.id, 'user_reviewing')
   renderOverlay('autofilled')
-  // User clicks the actual submit button themselves — we never submit for them
   alert('HireMind: Please review all fields, then click the page\'s own Submit button.')
 }

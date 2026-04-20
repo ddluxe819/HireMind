@@ -4,6 +4,7 @@ from typing import List
 
 from backend.db.database import get_db
 from backend.models.application import ApplicationCreate, ApplicationUpdate, ApplicationOut, ApplicationStatus
+from backend.models.application_fields import build_fields_from_profile
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -25,7 +26,21 @@ def get_application(app_id: str, db: Client = Depends(get_db)):
 @router.post("/", response_model=ApplicationOut, status_code=201)
 def create_application(payload: ApplicationCreate, db: Client = Depends(get_db)):
     result = db.table("applications").insert(payload.model_dump(exclude_none=True)).execute()
-    return result.data[0]
+    app_row = result.data[0]
+
+    # Seed application_fields from the most recent profile (best-effort).
+    try:
+        profile_res = db.table("profiles").select("*").order("created_at", desc=True).limit(1).execute()
+        profile = profile_res.data[0] if profile_res.data else None
+        db.table("application_fields").insert({
+            "application_id": app_row["id"],
+            "fields": build_fields_from_profile(profile or {}),
+            "custom_answers": [],
+        }).execute()
+    except Exception:
+        pass
+
+    return app_row
 
 
 @router.patch("/{app_id}", response_model=ApplicationOut)

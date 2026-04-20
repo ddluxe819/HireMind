@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '../store/appStore'
 import StatusBadge from '../components/StatusBadge'
+import FieldsPanel from '../components/FieldsPanel'
 import { STATUS_META, PIPELINE } from '../data/sampleData'
 
 function PipelineBar({ status }) {
@@ -32,6 +33,7 @@ function ExtensionOverlay({ app, onClose, accent }) {
   const [step, setStep] = useState(0)
   const [regenerating, setRegenerating] = useState(false)
   const [docPanel, setDocPanel] = useState(null) // { type: 'resume'|'cl', id, content, editing, editText, saving, error, loading }
+  const [showFields, setShowFields] = useState(false)
   const { profile, generateDocs, updateApplicationStatus } = useAppStore()
 
   const handleRegenerate = async () => {
@@ -82,13 +84,14 @@ function ExtensionOverlay({ app, onClose, accent }) {
     }
   }
 
+  // Only required fields shown here — optional fields are editable in the full panel but don't nag.
   const fields = [
-    { label: 'Full Name',    value: profile?.name || 'Not set',          ok: Boolean(profile?.name) },
-    { label: 'Email',        value: profile?.email || 'Not set',         ok: Boolean(profile?.email) },
-    { label: 'Phone',        value: profile?.phone || 'Not set',         ok: Boolean(profile?.phone) },
-    { label: 'Resume',       value: app.resume_variant_id ? `${(app.company || 'job').toLowerCase().replace(/\s+/g, '_')}_resume.pdf` : 'Not generated', ok: Boolean(app.resume_variant_id) },
-    { label: 'Cover Letter', value: app.cover_letter_id ? 'Attached' : 'Not generated', ok: Boolean(app.cover_letter_id) },
-    { label: 'LinkedIn URL', value: profile?.linkedin_url || 'Not set',  ok: Boolean(profile?.linkedin_url) },
+    { label: 'Full Name',       value: profile?.name || 'Not set',          ok: Boolean(profile?.name) },
+    { label: 'Email',           value: profile?.email || 'Not set',         ok: Boolean(profile?.email) },
+    { label: 'Phone',           value: profile?.phone || 'Not set',         ok: Boolean(profile?.phone) },
+    { label: 'Work Auth',       value: profile?.work_authorized != null ? (profile.work_authorized ? 'Authorized' : 'Not authorized') : 'Not set', ok: profile?.work_authorized != null },
+    { label: 'Resume',          value: app.resume_variant_id ? `${(app.company || 'job').toLowerCase().replace(/\s+/g, '_')}_resume.pdf` : 'Not generated', ok: Boolean(app.resume_variant_id) },
+    { label: 'Cover Letter',    value: app.cover_letter_id ? 'Attached' : 'Not generated', ok: Boolean(app.cover_letter_id) },
   ]
 
   const docs = [
@@ -117,7 +120,9 @@ function ExtensionOverlay({ app, onClose, accent }) {
             </div>
           </div>
 
-          {docPanel ? (
+          {showFields ? (
+            <FieldsPanel app={app} accent={accent} onBack={() => setShowFields(false)} />
+          ) : docPanel ? (
             <div style={{ paddingBottom: 24 }}>
               {/* Doc panel header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -206,7 +211,14 @@ function ExtensionOverlay({ app, onClose, accent }) {
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, color: '#0c0e1c', marginBottom: 10 }}>Form Status</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, color: '#0c0e1c' }}>Form Status</div>
+                  <button
+                    onClick={() => setShowFields(true)}
+                    style={{ background: 'none', border: 'none', fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: 600, color: accent, cursor: 'pointer', padding: 0 }}>
+                    Edit all fields →
+                  </button>
+                </div>
                 {fields.map((f) => (
                   <div key={f.label} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f0efe9' }}>
                     <span style={{ fontSize: 14, marginRight: 8 }}>{f.ok ? '✅' : '⚠️'}</span>

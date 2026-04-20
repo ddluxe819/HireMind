@@ -36,8 +36,10 @@ const gridBtn = (active) => ({
 export default function Onboarding({ onComplete }) {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
-    name: '', title: '', location: '', email: '', phone: '', linkedin_url: '',
+    name: '', title: '', location: '', email: '', phone: '',
+    linkedin_url: '', github_url: '', portfolio_url: '',
     experience: '', skills: [], industries: [], salary: '',
+    work_authorized: null, requires_sponsorship: null,
     resume_base_id: null, resume_filename: null, resume_text: '',
   })
   const [uploadState, setUploadState] = useState('idle') // idle | uploading | success | error
@@ -333,6 +335,38 @@ export default function Onboarding({ onComplete }) {
                 onChange={(e) => setForm((f) => ({ ...f, linkedin_url: e.target.value }))}
                 style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1.5px solid #e0dfd8', fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#0c0e1c', background: '#fff', boxSizing: 'border-box' }}
               />
+            </div>
+            <div>
+              <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, color: '#0c0e1c', marginBottom: 8 }}>GitHub URL <span style={{ color: '#9a9fa8', fontWeight: 400 }}>(optional)</span></div>
+              <input
+                value={form.github_url || ''}
+                placeholder="github.com/yourname"
+                onChange={(e) => setForm((f) => ({ ...f, github_url: e.target.value }))}
+                style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1.5px solid #e0dfd8', fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#0c0e1c', background: '#fff', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, color: '#0c0e1c', marginBottom: 8 }}>Portfolio / Website <span style={{ color: '#9a9fa8', fontWeight: 400 }}>(optional)</span></div>
+              <input
+                value={form.portfolio_url || ''}
+                placeholder="yourname.com"
+                onChange={(e) => setForm((f) => ({ ...f, portfolio_url: e.target.value }))}
+                style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1.5px solid #e0dfd8', fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#0c0e1c', background: '#fff', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, color: '#0c0e1c', marginBottom: 8 }}>Authorized to work in your target country?</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <button type="button" onClick={() => setForm((f) => ({ ...f, work_authorized: true }))} style={gridBtn(form.work_authorized === true)}>Yes</button>
+                <button type="button" onClick={() => setForm((f) => ({ ...f, work_authorized: false }))} style={gridBtn(form.work_authorized === false)}>No</button>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, color: '#0c0e1c', marginBottom: 8 }}>Do you require sponsorship?</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <button type="button" onClick={() => setForm((f) => ({ ...f, requires_sponsorship: true }))} style={gridBtn(form.requires_sponsorship === true)}>Yes</button>
+                <button type="button" onClick={() => setForm((f) => ({ ...f, requires_sponsorship: false }))} style={gridBtn(form.requires_sponsorship === false)}>No</button>
+              </div>
             </div>
           </div>
         )}

@@ -28,3 +28,20 @@ export async function fetchCoverLetter(clId) {
 export async function updateStatus(appId, status) {
   return fetch(`${API_BASE}/applications/${appId}/status?status=${status}`, { method: 'PATCH' })
 }
+
+export async function fetchApplicationFields(appId) {
+  const res = await fetch(`${API_BASE}/applications/${appId}/fields`)
+  if (!res.ok) return null
+  return res.json()
+}
+
+export async function appendCustomAnswers(appId, customAnswers) {
+  if (!customAnswers?.length) return null
+  const res = await fetch(`${API_BASE}/applications/${appId}/fields/custom-answers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ custom_answers: customAnswers }),
+  })
+  if (!res.ok) return null
+  return res.json()
+}

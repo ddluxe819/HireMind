@@ -178,6 +178,25 @@ export const useAppStore = create((set, get) => ({
     set({ loading: false })
   },
 
+  fetchApplicationFields: async (appId) => {
+    const res = await fetch(`${API}/applications/${appId}/fields`)
+    if (!res.ok) throw new Error('Could not load application fields')
+    return res.json()
+  },
+
+  saveApplicationFields: async (appId, { fields, customAnswers }) => {
+    const body = {}
+    if (fields !== undefined) body.fields = fields
+    if (customAnswers !== undefined) body.custom_answers = customAnswers
+    const res = await fetch(`${API}/applications/${appId}/fields`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) throw new Error('Save failed')
+    return res.json()
+  },
+
   updateApplicationStatus: async (appId, status) => {
     try {
       await fetch(`${API}/applications/${appId}/status?status=${status}`, { method: 'PATCH' })
@@ -211,10 +230,15 @@ export const useAppStore = create((set, get) => ({
           email: formData.email || undefined,
           phone: formData.phone || undefined,
           linkedin_url: formData.linkedin_url || undefined,
+          github_url: formData.github_url || undefined,
+          portfolio_url: formData.portfolio_url || undefined,
           experience: formData.experience || undefined,
+          years_experience: formData.experience || undefined,
           skills: formData.skills,
           industries: formData.industries,
           salary: formData.salary || undefined,
+          work_authorized: typeof formData.work_authorized === 'boolean' ? formData.work_authorized : undefined,
+          requires_sponsorship: typeof formData.requires_sponsorship === 'boolean' ? formData.requires_sponsorship : undefined,
           resume_base_id: formData.resume_base_id || undefined,
         }),
       })

@@ -1,4 +1,4 @@
-import { API_BASE, fetchApplicationByUrl } from '../utils/api_client.js'
+import { API_BASE, fetchApplicationByUrl, fetchApplicationFields } from '../utils/api_client.js'
 
 const JOB_SITE_PATTERNS = [
   /greenhouse\.io/,
@@ -36,10 +36,12 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     }
 
     if (applicationRecord) {
-      tabContext.set(tabId, applicationRecord)
+      const applicationFields = await fetchApplicationFields(applicationRecord.id)
+      const context = { application: applicationRecord, applicationFields }
+      tabContext.set(tabId, context)
       chrome.tabs.sendMessage(tabId, {
         type: 'HIREMIND_APPLICATION_CONTEXT',
-        payload: applicationRecord,
+        payload: context,
       })
 
       await fetch(`${API_BASE}/applications/${applicationRecord.id}/status?status=opened`, {
@@ -67,6 +69,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'HIREMIND_GET_CONTEXT') {
     const ctx = sender.tab ? tabContext.get(sender.tab.id) : null
-    sendResponse({ applicationRecord: ctx })
+    sendResponse({ context: ctx })
   }
 })
