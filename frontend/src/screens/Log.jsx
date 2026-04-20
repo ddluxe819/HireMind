@@ -28,13 +28,27 @@ function PipelineBar({ status }) {
 
 function ExtensionOverlay({ app, onClose, accent }) {
   const [step, setStep] = useState(0)
+  const [regenerating, setRegenerating] = useState(false)
+  const { profile, generateDocs, updateApplicationStatus } = useAppStore()
+
+  const handleRegenerate = async () => {
+    setRegenerating(true)
+    try { await generateDocs(app) } catch {}
+    setRegenerating(false)
+  }
+
+  const handleSubmit = () => {
+    updateApplicationStatus(app.id, 'submitted')
+    setStep(1)
+  }
+
   const fields = [
-    { label: 'Full Name',    value: 'Alex Johnson',          ok: true },
-    { label: 'Email',        value: 'alex@email.com',         ok: true },
-    { label: 'Phone',        value: '+1 415 555 0192',        ok: true },
-    { label: 'Resume',       value: `resume_${(app.company || 'job').toLowerCase()}_${app.resumeV || 'v1'}.pdf`, ok: true },
-    { label: 'Cover Letter', value: 'Attached',               ok: true },
-    { label: 'LinkedIn URL', value: 'linkedin.com/in/alexj',  ok: false },
+    { label: 'Full Name',    value: profile?.name || 'Not set',          ok: Boolean(profile?.name) },
+    { label: 'Email',        value: profile?.email || 'Not set',         ok: Boolean(profile?.email) },
+    { label: 'Phone',        value: profile?.phone || 'Not set',         ok: Boolean(profile?.phone) },
+    { label: 'Resume',       value: app.resume_variant_id ? `${(app.company || 'job').toLowerCase().replace(/\s+/g, '_')}_resume.pdf` : 'Not generated', ok: Boolean(app.resume_variant_id) },
+    { label: 'Cover Letter', value: app.cover_letter_id ? 'Attached' : 'Not generated', ok: Boolean(app.cover_letter_id) },
+    { label: 'LinkedIn URL', value: profile?.linkedin_url || 'Not set',  ok: Boolean(profile?.linkedin_url) },
   ]
 
   return (
@@ -86,11 +100,12 @@ function ExtensionOverlay({ app, onClose, accent }) {
               </div>
 
               <div style={{ display: 'flex', gap: 8, paddingBottom: 24 }}>
-                <button style={{ flex: 1, padding: 12, borderRadius: 12, border: '1px solid #e0dfd8', background: '#f6f5f0', color: '#6b6f7e', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13 }}>
-                  Regenerate
+                <button onClick={handleRegenerate} disabled={regenerating}
+                  style={{ flex: 1, padding: 12, borderRadius: 12, border: '1px solid #e0dfd8', background: '#f6f5f0', color: '#6b6f7e', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, cursor: regenerating ? 'default' : 'pointer' }}>
+                  {regenerating ? '✦ Regenerating…' : 'Regenerate'}
                 </button>
-                <button onClick={() => setStep(1)}
-                  style={{ flex: 2, padding: 12, borderRadius: 12, border: 'none', background: accent, color: '#fff', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 14 }}>
+                <button onClick={handleSubmit}
+                  style={{ flex: 2, padding: 12, borderRadius: 12, border: 'none', background: accent, color: '#fff', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
                   Submit Application →
                 </button>
               </div>
@@ -120,7 +135,7 @@ function AppRow({ app, onOpenExtension, accent }) {
   const [expanded, setExpanded] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState('')
-  const { generateDocs } = useAppStore()
+  const { generateDocs, updateApplicationStatus } = useAppStore()
 
   const handleGenerate = async () => {
     setGenerating(true)
@@ -154,6 +169,31 @@ function AppRow({ app, onOpenExtension, accent }) {
       {expanded && (
         <div style={{ padding: '0 16px 16px', borderTop: '1px solid #f0efe9' }}>
           <PipelineBar status={app.status} />
+          {(() => {
+            const actions = {
+              ready:        [{ label: 'Mark Submitted',  next: 'submitted' }],
+              submitted:    [{ label: '🎉 Interview',    next: 'interviewing' }, { label: 'Rejected', next: 'rejected' }],
+              interviewing: [{ label: 'Rejected',        next: 'rejected' }],
+            }
+            const btns = actions[app.status]
+            if (!btns) return null
+            return (
+              <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                {btns.map(({ label, next }) => (
+                  <button key={next}
+                    onClick={() => updateApplicationStatus(app.id, next)}
+                    style={{
+                      flex: 1, padding: '7px 10px', borderRadius: 10, border: '1.5px solid #e0dfd8',
+                      background: next === 'rejected' ? '#fff5f5' : '#f0fdf4',
+                      color: next === 'rejected' ? '#ef4444' : '#16a34a',
+                      fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                    }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <div style={{ flex: 1, background: '#f6f5f0', borderRadius: 10, padding: 10, textAlign: 'center' }}>
               <div style={{ fontSize: 10, fontFamily: 'DM Sans, sans-serif', color: '#9a9fa8', marginBottom: 2 }}>Resume</div>
