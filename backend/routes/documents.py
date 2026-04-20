@@ -8,7 +8,8 @@ from typing import List
 
 from backend.db.database import get_db
 from backend.models.document import (
-    ResumeBaseOut, ResumeVariantOut, CoverLetterOut, GenerateDocsRequest, SkillsSuggestRequest
+    ResumeBaseOut, ResumeVariantOut, CoverLetterOut, GenerateDocsRequest,
+    SkillsSuggestRequest, DocumentUpdateRequest
 )
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -168,3 +169,19 @@ def get_cover_letter(cl_id: str, db: Client = Depends(get_db)):
     if not result.data:
         raise HTTPException(status_code=404, detail="Cover letter not found")
     return result.data
+
+
+@router.patch("/variants/{variant_id}", response_model=ResumeVariantOut)
+def update_resume_variant(variant_id: str, payload: DocumentUpdateRequest, db: Client = Depends(get_db)):
+    result = db.table("resume_variants").update({"content": payload.content}).eq("id", variant_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Resume variant not found")
+    return result.data[0]
+
+
+@router.patch("/cover-letters/{cl_id}", response_model=CoverLetterOut)
+def update_cover_letter(cl_id: str, payload: DocumentUpdateRequest, db: Client = Depends(get_db)):
+    result = db.table("cover_letters").update({"content": payload.content}).eq("id", cl_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Cover letter not found")
+    return result.data[0]

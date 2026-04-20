@@ -1,20 +1,24 @@
 import { useAppStore } from '../store/appStore'
 
 export default function Profile() {
-  const { tweaks, resetOnboarding, applications } = useAppStore()
+  const { tweaks, resetOnboarding, applications, profile } = useAppStore()
   const accent = tweaks.accentColor
 
+  const name = profile?.name || 'Your Name'
+  const avatarLetter = name[0].toUpperCase()
+  const subtitle = [profile?.title, profile?.location].filter(Boolean).join(' · ')
+
   const stats = [
-    [String(applications.length || 6), 'Applied'],
-    [String(applications.filter((a) => a.status === 'interviewing').length || 1), 'Interviews'],
-    ['86%', 'Match avg'],
+    [String(applications.length || 0), 'Applied'],
+    [String(applications.filter((a) => a.status === 'interviewing').length || 0), 'Interviews'],
+    [String(profile?.skills?.length || 0), 'Skills'],
   ]
 
   const settings = [
-    ['Resume', 'Base Resume v3 · Updated 2h ago'],
-    ['Preferences', 'Remote · $140K+ · Design'],
-    ['Notifications', 'Email + push enabled'],
-    ['Connected Apps', 'Chrome Extension active'],
+    ['Resume', profile?.resume_base_id ? 'Resume uploaded' : 'No resume on file'],
+    ['Industries', profile?.industries?.length ? profile.industries.slice(0, 3).join(', ') : 'Not set'],
+    ['Salary', profile?.salary || 'Not set'],
+    ['Experience', profile?.experience || 'Not set'],
   ]
 
   return (
@@ -23,12 +27,12 @@ export default function Profile() {
 
       {/* Avatar card */}
       <div style={{ background: '#fff', borderRadius: 20, padding: 20, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 12px rgba(12,14,28,0.06)' }}>
-        <div style={{ width: 60, height: 60, borderRadius: 18, background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 24, fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-          A
+        <div style={{ width: 60, height: 60, borderRadius: 18, background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 24, fontFamily: 'Plus Jakarta Sans, sans-serif', flexShrink: 0 }}>
+          {avatarLetter}
         </div>
         <div>
-          <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 800, fontSize: 18, color: '#0c0e1c' }}>Alex Johnson</div>
-          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8' }}>Product Designer · San Francisco</div>
+          <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 800, fontSize: 18, color: '#0c0e1c' }}>{name}</div>
+          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8' }}>{subtitle || 'Complete onboarding to fill this in'}</div>
         </div>
       </div>
 
@@ -54,7 +58,7 @@ export default function Profile() {
       ))}
 
       <button onClick={resetOnboarding}
-        style={{ width: '100%', padding: 13, borderRadius: 14, border: '1.5px solid #fecaca', background: '#fff5f5', color: '#ef4444', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, marginTop: 8 }}>
+        style={{ width: '100%', padding: 13, borderRadius: 14, border: '1.5px solid #fecaca', background: '#fff5f5', color: '#ef4444', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, marginTop: 8, cursor: 'pointer' }}>
         Restart Onboarding
       </button>
     </div>

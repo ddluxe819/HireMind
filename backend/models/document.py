@@ -37,3 +37,7 @@ class GenerateDocsRequest(BaseModel):
 class SkillsSuggestRequest(BaseModel):
     job_title: str
     resume_text: str
+
+
+class DocumentUpdateRequest(BaseModel):
+    content: str

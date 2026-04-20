@@ -1,108 +1,248 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppStore } from '../store/appStore'
 
-const RESUME_SECTIONS = [
-  { id: 'header',  label: 'Header',            content: 'Alex Johnson\nProduct Designer · alex@email.com · San Francisco, CA\nlinkedin.com/in/alexj · alexjohnson.design' },
-  { id: 'summary', label: 'Summary',           content: 'Strategic product designer with 7+ years crafting human-centered digital experiences. Specialized in 0→1 product development, design systems, and cross-functional collaboration at high-growth startups.' },
-  { id: 'exp1',    label: 'Experience · Stripe', content: 'Senior Product Designer, 2022–Present\nLed redesign of Dashboard onboarding, reducing time-to-first-charge by 34%. Owned the Billing product surface across 3 engineering teams.' },
-  { id: 'exp2',    label: 'Experience · Airbnb', content: 'Product Designer, 2019–2022\nDesigned new search & filters experience for 100M+ users. Built and maintained the core Figma component library.' },
-  { id: 'skills',  label: 'Skills',            content: 'Figma · Prototyping · Design Systems · User Research · Usability Testing · HTML/CSS · React (basics) · Framer' },
-]
-
-const CL_TEMPLATE = `Dear Hiring Manager,
-
-I'm writing to express my strong interest in the Product Designer role at Stripe. With 7+ years designing at the intersection of complexity and clarity, I've developed a deep appreciation for the precise, developer-first thinking that defines Stripe's work.
-
-At Stripe, I led the redesign of our onboarding experience — reducing time-to-first-charge by 34% — by combining rigorous data analysis with scrappy prototype testing.
-
-I'd love to talk more about how I can contribute to your team.
-
-Best,
-Alex Johnson`
+const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api'
 
 export default function Documents() {
-  const { tweaks } = useAppStore()
+  const { tweaks, profile, applications, fetchApplications } = useAppStore()
   const accent = tweaks.accentColor
-  const [tab, setTab] = useState('resume')
-  const [sections, setSections] = useState(RESUME_SECTIONS)
-  const [editingId, setEditingId] = useState(null)
-  const [aiLoading, setAiLoading] = useState(null)
-  const [cl, setCl] = useState(CL_TEMPLATE)
 
-  const simulateAi = (id) => {
-    setAiLoading(id)
-    setTimeout(() => {
-      setSections((ss) => ss.map((s) => s.id === id ? { ...s, content: s.content + '\n\n✦ Tailored for Stripe Product Designer role.' } : s))
-      setAiLoading(null)
-    }, 1400)
+  const [tab, setTab] = useState('resume')
+  const [editingId, setEditingId] = useState(null)
+  const [localEdits, setLocalEdits] = useState({})
+  const [loadedDocs, setLoadedDocs] = useState({})
+  const [loading, setLoading] = useState({})
+  const [saving, setSaving] = useState(null)
+  const [baseContent, setBaseContent] = useState(profile?.resume_text || '')
+  const [editingBase, setEditingBase] = useState(false)
+
+  useEffect(() => {
+    if (!applications.length) fetchApplications()
+  }, [])
+
+  useEffect(() => {
+    setBaseContent(profile?.resume_text || '')
+  }, [profile?.resume_text])
+
+  const appsWithVariants = applications.filter((a) => a.resume_variant_id)
+  const appsWithCoverLetters = applications.filter((a) => a.cover_letter_id)
+
+  const loadDoc = async (type, id) => {
+    if (loadedDocs[id] !== undefined) return
+    setLoading((prev) => ({ ...prev, [id]: true }))
+    try {
+      const url = type === 'variant'
+        ? `${API}/documents/variants/${id}`
+        : `${API}/documents/cover-letters/${id}`
+      const res = await fetch(url)
+      const data = await res.json()
+      setLoadedDocs((prev) => ({ ...prev, [id]: data.content }))
+      setLocalEdits((prev) => ({ ...prev, [id]: data.content }))
+    } catch {
+      setLoadedDocs((prev) => ({ ...prev, [id]: '' }))
+    }
+    setLoading((prev) => ({ ...prev, [id]: false }))
   }
+
+  const saveDoc = async (type, id) => {
+    setSaving(id)
+    try {
+      const url = type === 'variant'
+        ? `${API}/documents/variants/${id}`
+        : `${API}/documents/cover-letters/${id}`
+      await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: localEdits[id] }),
+      })
+      setLoadedDocs((prev) => ({ ...prev, [id]: localEdits[id] }))
+    } catch {}
+    setSaving(null)
+    setEditingId(null)
+  }
+
+  const cardStyle = {
+    background: '#fff', borderRadius: 14, marginBottom: 10, overflow: 'hidden',
+    boxShadow: '0 2px 10px rgba(12,14,28,0.05)',
+  }
+  const headerStyle = {
+    padding: '12px 14px', display: 'flex', alignItems: 'center',
+    justifyContent: 'space-between', borderBottom: '1px solid #f0efe9',
+  }
+  const labelStyle = {
+    fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, color: '#0c0e1c',
+  }
+  const bodyStyle = {
+    padding: '12px 14px', fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+    color: '#3d4050', lineHeight: 1.7, whiteSpace: 'pre-wrap',
+  }
+  const textareaStyle = {
+    width: '100%', padding: '12px 14px', border: 'none',
+    fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#3d4050',
+    lineHeight: 1.6, resize: 'vertical', minHeight: 120,
+    background: '#fafaf8', boxSizing: 'border-box',
+  }
+  const actionBtn = (primary) => ({
+    padding: '5px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+    background: primary ? '#f0effb' : '#f6f5f0',
+    color: primary ? accent : '#6b6f7e',
+    fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11,
+  })
+
+  const emptyState = (msg) => (
+    <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+      <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
+      <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8' }}>{msg}</div>
+    </div>
+  )
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f5f4f0' }}>
       <div style={{ padding: '16px 20px 0' }}>
         <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 800, fontSize: 22, color: '#0c0e1c', marginBottom: 14 }}>Documents</div>
         <div style={{ display: 'flex', background: '#fff', borderRadius: 14, padding: 4, marginBottom: 16, boxShadow: '0 2px 10px rgba(12,14,28,0.06)' }}>
-          {['resume', 'coverletter'].map((t) => (
+          {[['resume', 'Resume'], ['coverletter', 'Cover Letters']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)}
               style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', cursor: 'pointer', background: tab === t ? accent : 'transparent', color: tab === t ? '#fff' : '#9a9fa8', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, transition: 'all 0.2s' }}>
-              {t === 'resume' ? 'Resume' : 'Cover Letter'}
+              {label}
             </button>
           ))}
         </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-          <span style={{ background: '#f0effb', color: accent, fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 12, padding: '4px 12px', borderRadius: 20 }}>
-            {tab === 'resume' ? 'Base Resume v3' : 'Stripe CL · AI Generated'}
-          </span>
-          <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#c0bfb8' }}>Updated 2h ago</span>
-        </div>
 
-        {tab === 'resume' ? (
-          sections.map((sec) => (
-            <div key={sec.id} style={{ background: '#fff', borderRadius: 14, marginBottom: 10, overflow: 'hidden', boxShadow: '0 2px 10px rgba(12,14,28,0.05)' }}>
-              <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0efe9' }}>
-                <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, color: '#0c0e1c' }}>{sec.label}</span>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => simulateAi(sec.id)} disabled={!!aiLoading}
-                    style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: '#f0effb', color: accent, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11 }}>
-                    {aiLoading === sec.id ? '✦ Rewriting…' : '✦ AI Rewrite'}
-                  </button>
-                  <button onClick={() => setEditingId(editingId === sec.id ? null : sec.id)}
-                    style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: '#f6f5f0', color: '#6b6f7e', fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11 }}>
-                    {editingId === sec.id ? 'Done' : 'Edit'}
+        {tab === 'resume' && (
+          <>
+            {baseContent ? (
+              <div style={cardStyle}>
+                <div style={headerStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={labelStyle}>Your Resume</span>
+                    <span style={{ background: '#f0effb', color: accent, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11, padding: '2px 8px', borderRadius: 10 }}>Base</span>
+                  </div>
+                  <button onClick={() => setEditingBase((v) => !v)} style={actionBtn(false)}>
+                    {editingBase ? 'Done' : 'Edit'}
                   </button>
                 </div>
+                {editingBase ? (
+                  <textarea
+                    value={baseContent}
+                    onChange={(e) => setBaseContent(e.target.value)}
+                    style={{ ...textareaStyle, minHeight: 200 }}
+                  />
+                ) : (
+                  <div style={{ ...bodyStyle, maxHeight: 200, overflowY: 'auto' }}>{baseContent}</div>
+                )}
               </div>
-              {editingId === sec.id ? (
-                <textarea
-                  value={sec.content}
-                  onChange={(e) => setSections((ss) => ss.map((s) => s.id === sec.id ? { ...s, content: e.target.value } : s))}
-                  style={{ width: '100%', padding: '12px 14px', border: 'none', fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#3d4050', lineHeight: 1.6, resize: 'vertical', minHeight: 80, background: '#fafaf8' }}
-                />
-              ) : (
-                <div style={{ padding: '12px 14px', fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#3d4050', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
-                  {sec.content}
+            ) : (
+              emptyState('Upload a resume in onboarding to see it here.')
+            )}
+
+            {appsWithVariants.length > 0 && (
+              <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 12, color: '#9a9fa8', marginBottom: 8, marginTop: 16, textTransform: 'uppercase', letterSpacing: 1 }}>
+                Tailored Versions
+              </div>
+            )}
+
+            {appsWithVariants.map((app) => {
+              const id = app.resume_variant_id
+              const isEditing = editingId === id
+              const content = loadedDocs[id]
+              return (
+                <div key={id} style={cardStyle}>
+                  <div style={headerStyle}>
+                    <div>
+                      <div style={labelStyle}>{app.company}</div>
+                      <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#9a9fa8' }}>{app.title}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {content === undefined && !loading[id] && (
+                        <button onClick={() => loadDoc('variant', id)} style={actionBtn(true)}>View</button>
+                      )}
+                      {content !== undefined && !isEditing && (
+                        <button onClick={() => setEditingId(id)} style={actionBtn(false)}>Edit</button>
+                      )}
+                      {isEditing && (
+                        <>
+                          <button onClick={() => saveDoc('variant', id)} disabled={saving === id} style={actionBtn(true)}>
+                            {saving === id ? 'Saving…' : 'Save'}
+                          </button>
+                          <button onClick={() => setEditingId(null)} style={actionBtn(false)}>Cancel</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {loading[id] && (
+                    <div style={{ padding: '14px', fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8' }}>Loading…</div>
+                  )}
+                  {content !== undefined && !isEditing && (
+                    <div style={{ ...bodyStyle, maxHeight: 180, overflowY: 'auto' }}>{content}</div>
+                  )}
+                  {isEditing && (
+                    <textarea
+                      value={localEdits[id] ?? content}
+                      onChange={(e) => setLocalEdits((prev) => ({ ...prev, [id]: e.target.value }))}
+                      style={{ ...textareaStyle, minHeight: 180 }}
+                    />
+                  )}
                 </div>
-              )}
-            </div>
-          ))
-        ) : (
-          <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 10px rgba(12,14,28,0.05)' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-              <button
-                onClick={() => { setAiLoading('cl'); setTimeout(() => setAiLoading(null), 1400) }}
-                style={{ padding: '7px 14px', borderRadius: 10, border: 'none', background: '#f0effb', color: accent, fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 12 }}>
-                {aiLoading === 'cl' ? '✦ Regenerating…' : '✦ Regenerate'}
-              </button>
-            </div>
-            <textarea
-              value={cl}
-              onChange={(e) => setCl(e.target.value)}
-              style={{ width: '100%', border: 'none', fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#3d4050', lineHeight: 1.9, resize: 'none', height: 320, background: 'transparent' }}
-            />
-          </div>
+              )
+            })}
+
+            {!baseContent && appsWithVariants.length === 0 && emptyState('No documents yet. Queue a job on Discover to generate tailored materials.')}
+          </>
+        )}
+
+        {tab === 'coverletter' && (
+          <>
+            {appsWithCoverLetters.length === 0
+              ? emptyState('No cover letters yet. Queue a job on Discover to generate one.')
+              : appsWithCoverLetters.map((app) => {
+                const id = app.cover_letter_id
+                const isEditing = editingId === id
+                const content = loadedDocs[id]
+                return (
+                  <div key={id} style={cardStyle}>
+                    <div style={headerStyle}>
+                      <div>
+                        <div style={labelStyle}>{app.company}</div>
+                        <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#9a9fa8' }}>{app.title}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {content === undefined && !loading[id] && (
+                          <button onClick={() => loadDoc('cl', id)} style={actionBtn(true)}>View</button>
+                        )}
+                        {content !== undefined && !isEditing && (
+                          <button onClick={() => setEditingId(id)} style={actionBtn(false)}>Edit</button>
+                        )}
+                        {isEditing && (
+                          <>
+                            <button onClick={() => saveDoc('cl', id)} disabled={saving === id} style={actionBtn(true)}>
+                              {saving === id ? 'Saving…' : 'Save'}
+                            </button>
+                            <button onClick={() => setEditingId(null)} style={actionBtn(false)}>Cancel</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {loading[id] && (
+                      <div style={{ padding: '14px', fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8' }}>Loading…</div>
+                    )}
+                    {content !== undefined && !isEditing && (
+                      <div style={{ ...bodyStyle, maxHeight: 220, overflowY: 'auto' }}>{content}</div>
+                    )}
+                    {isEditing && (
+                      <textarea
+                        value={localEdits[id] ?? content}
+                        onChange={(e) => setLocalEdits((prev) => ({ ...prev, [id]: e.target.value }))}
+                        style={{ ...textareaStyle, minHeight: 220 }}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+          </>
         )}
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { SAMPLE_JOBS, SAMPLE_APPS } from '../data/sampleData'
 
-const API = '/api'
+const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api'
 const TWEAKS_KEY = 'hm_tweaks'
 const SCREEN_KEY = 'hm_screen'
 const PROFILE_KEY = 'hm_profile'
