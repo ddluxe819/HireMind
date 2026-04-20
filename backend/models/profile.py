@@ -6,6 +6,9 @@ class ProfileCreate(BaseModel):
     name: Optional[str] = None
     title: Optional[str] = None
     location: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    linkedin_url: Optional[str] = None
     experience: Optional[str] = None
     skills: List[str] = []
     industries: List[str] = []

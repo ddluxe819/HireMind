@@ -34,7 +34,7 @@ const gridBtn = (active) => ({
 export default function Onboarding({ onComplete }) {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
-    name: '', title: '', location: '',
+    name: '', title: '', location: '', email: '', phone: '', linkedin_url: '',
     experience: '', skills: [], industries: [], salary: '',
     resume_base_id: null, resume_filename: null, resume_text: '',
   })
@@ -135,7 +135,13 @@ export default function Onboarding({ onComplete }) {
         {/* Step 0 — Profile basics */}
         {step === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {[['Full Name', 'name', 'Alex Johnson'], ['Job Title', 'title', 'Product Designer'], ['Location', 'location', 'San Francisco, CA']].map(([label, key, ph]) => (
+            {[
+              ['Full Name', 'name', 'Alex Johnson'],
+              ['Job Title', 'title', 'Product Designer'],
+              ['Location', 'location', 'San Francisco, CA'],
+              ['Email', 'email', 'you@example.com'],
+              ['Phone', 'phone', '+1 415 555 0100'],
+            ].map(([label, key, ph]) => (
               <div key={key}>
                 <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, color: '#0c0e1c', marginBottom: 6 }}>{label}</div>
                 <input
@@ -316,6 +322,15 @@ export default function Onboarding({ onComplete }) {
                   <button key={v} onClick={() => setForm((f) => ({ ...f, salary: v }))} style={gridBtn(form.salary === v)}>{v}</button>
                 ))}
               </div>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, color: '#0c0e1c', marginBottom: 8 }}>LinkedIn URL <span style={{ color: '#9a9fa8', fontWeight: 400 }}>(optional)</span></div>
+              <input
+                value={form.linkedin_url || ''}
+                placeholder="linkedin.com/in/yourname"
+                onChange={(e) => setForm((f) => ({ ...f, linkedin_url: e.target.value }))}
+                style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: '1.5px solid #e0dfd8', fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#0c0e1c', background: '#fff', boxSizing: 'border-box' }}
+              />
             </div>
           </div>
         )}
