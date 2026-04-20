@@ -118,6 +118,21 @@ function ExtensionOverlay({ app, onClose, accent }) {
 
 function AppRow({ app, onOpenExtension, accent }) {
   const [expanded, setExpanded] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [genError, setGenError] = useState('')
+  const { generateDocs } = useAppStore()
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    setGenError('')
+    try {
+      await generateDocs(app)
+    } catch (e) {
+      setGenError(e.message || 'Generation failed')
+    }
+    setGenerating(false)
+  }
+
   return (
     <div style={{ background: '#fff', borderRadius: 16, marginBottom: 10, overflow: 'hidden', boxShadow: '0 2px 12px rgba(12,14,28,0.06)' }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', gap: 12, cursor: 'pointer' }} onClick={() => setExpanded((e) => !e)}>
@@ -153,9 +168,20 @@ function AppRow({ app, onOpenExtension, accent }) {
               </div>
             </div>
           </div>
-          {(app.hasExt || app.status === 'queued' || app.status === 'ready') && (
+          {app.status === 'queued' && !app.resume_variant_id && (
+            <>
+              <button onClick={handleGenerate} disabled={generating}
+                style={{ width: '100%', marginTop: 10, padding: 11, borderRadius: 12, border: 'none', background: generating ? '#c0bfb8' : accent, color: '#fff', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, cursor: generating ? 'default' : 'pointer' }}>
+                {generating ? '✦ Generating docs…' : '✦ Generate Docs'}
+              </button>
+              {genError && (
+                <div style={{ marginTop: 6, fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#ef4444' }}>{genError}</div>
+              )}
+            </>
+          )}
+          {(app.status === 'ready' || app.resume_variant_id) && (
             <button onClick={() => onOpenExtension(app)}
-              style={{ width: '100%', marginTop: 10, padding: 11, borderRadius: 12, border: 'none', background: accent, color: '#fff', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              style={{ width: '100%', marginTop: 10, padding: 11, borderRadius: 12, border: 'none', background: accent, color: '#fff', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
               </svg>

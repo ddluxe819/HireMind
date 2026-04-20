@@ -119,6 +119,65 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  generateDocs: async (app) => {
+    const profile = get().profile
+    const resumeBaseId = app.resume_base_id || profile?.resume_base_id
+    if (!resumeBaseId) throw new Error('No resume on file. Upload one in onboarding first.')
+
+    let jobDescription = ''
+    try {
+      const jobRes = await fetch(`${API}/jobs/${app.job_id}`)
+      if (jobRes.ok) {
+        const job = await jobRes.json()
+        jobDescription = job.description || ''
+      }
+    } catch {}
+
+    const res = await fetch(`${API}/documents/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        job_id: app.job_id,
+        company: app.company,
+        title: app.title,
+        job_description: jobDescription,
+        resume_base_id: resumeBaseId,
+      }),
+    })
+    if (!res.ok) throw new Error('Document generation failed')
+    const result = await res.json()
+
+    set((s) => ({
+      applications: s.applications.map((a) =>
+        a.id === app.id
+          ? { ...a, status: 'ready', resume_variant_id: result.resume_variant_id, cover_letter_id: result.cover_letter_id }
+          : a
+      ),
+    }))
+    return result
+  },
+
+  scrapeJobs: async () => {
+    const profile = get().profile
+    if (!profile?.title) return
+    set({ loading: true })
+    try {
+      const res = await fetch(`${API}/jobs/scrape`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: profile.title,
+          location: profile.location || '',
+          limit: 15,
+        }),
+      })
+      if (!res.ok) throw new Error('Scrape failed')
+      const jobs = await res.json()
+      if (jobs.length) set({ jobs })
+    } catch {}
+    set({ loading: false })
+  },
+
   updateApplicationStatus: async (appId, status) => {
     try {
       await fetch(`${API}/applications/${appId}/status?status=${status}`, { method: 'PATCH' })

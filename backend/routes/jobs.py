@@ -3,6 +3,7 @@ import os
 import uuid
 import anthropic
 from fastapi import APIRouter, Query, HTTPException, Depends
+from pydantic import BaseModel
 from supabase import Client
 from typing import List, Optional
 
@@ -10,6 +11,12 @@ from backend.db.database import get_db
 from backend.models.job import JobListing
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
+
+
+class ScrapeRequest(BaseModel):
+    title: str
+    location: str = ""
+    limit: int = 15
 
 _claude = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -140,6 +147,29 @@ def get_discover_feed(
         except Exception:
             pass
     return MOCK_JOBS
+
+
+@router.post("/scrape", response_model=List[JobListing])
+def scrape_jobs(payload: ScrapeRequest, db: Client = Depends(get_db)):
+    from backend.services.scraper import scrape
+    try:
+        jobs = scrape(payload.title, location=payload.location, limit=payload.limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Scrape failed: {e}")
+    if not jobs:
+        raise HTTPException(status_code=404, detail="No jobs found from any source")
+    rows = [
+        {
+            "id": j.id, "company": j.company, "title": j.title,
+            "location": j.location, "salary_range": j.salary_range,
+            "job_type": j.job_type, "description": j.description,
+            "apply_url": j.apply_url, "platform": j.platform,
+            "match_score": j.match_score, "tags": j.tags, "posted_at": j.posted_at,
+        }
+        for j in jobs
+    ]
+    db.table("job_listings").upsert(rows).execute()
+    return jobs
 
 
 @router.get("/{job_id}", response_model=JobListing)

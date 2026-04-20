@@ -90,10 +90,17 @@ function BackCard({ offset }) {
 }
 
 export default function Discover() {
-  const { jobs, loading, fetchJobs, tweaks, queueJob } = useAppStore()
+  const { jobs, loading, fetchJobs, scrapeJobs, tweaks, queueJob } = useAppStore()
   const accent = tweaks.accentColor
   const [stack, setStack] = useState([])
   const [showDetail, setShowDetail] = useState(false)
+  const [scraping, setScraping] = useState(false)
+
+  const handleScrape = async () => {
+    setScraping(true)
+    await scrapeJobs()
+    setScraping(false)
+  }
 
   useEffect(() => { fetchJobs() }, [])
   useEffect(() => { setStack(jobs.map((j) => j.id)) }, [jobs])
@@ -114,10 +121,23 @@ export default function Discover() {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f5f4f0' }}>
       {/* Header */}
       <div style={{ padding: '16px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
+        <div style={{ flex: 1 }}>
           <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 800, fontSize: 22, color: '#0c0e1c' }}>Discover</div>
           <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8' }}>{stack.length} jobs for you</div>
         </div>
+        <button
+          onClick={handleScrape}
+          disabled={scraping || loading}
+          style={{
+            padding: '7px 14px', borderRadius: 20,
+            border: `1.5px solid ${scraping ? '#e0dfd8' : accent}`,
+            background: '#fff', cursor: scraping || loading ? 'default' : 'pointer',
+            fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 12,
+            color: scraping ? '#9a9fa8' : accent,
+            transition: 'all 0.2s',
+          }}>
+          {scraping ? 'Searching…' : '⟳ Real Jobs'}
+        </button>
       </div>
 
       {/* Card stack */}
