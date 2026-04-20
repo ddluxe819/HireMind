@@ -149,9 +149,22 @@ export default function Discover() {
         )}
 
         {!loading && stack.length === 0 && (
-          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-            <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 20, color: '#0c0e1c' }}>You're all caught up!</div>
-            <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#9a9fa8', textAlign: 'center', maxWidth: 220 }}>Check your Application Log to review queued jobs.</div>
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '0 24px' }}>
+            <div style={{ fontSize: 40 }}>✦</div>
+            <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 20, color: '#0c0e1c', textAlign: 'center' }}>You're all caught up!</div>
+            <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#9a9fa8', textAlign: 'center', maxWidth: 220 }}>
+              Find real listings or generate more personalized suggestions.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: 260 }}>
+              <button onClick={handleScrape} disabled={scraping}
+                style={{ padding: '13px 24px', borderRadius: 14, border: 'none', background: scraping ? '#c0bfb8' : accent, color: '#fff', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 14, cursor: scraping ? 'default' : 'pointer' }}>
+                {scraping ? 'Searching…' : '⟳ Find Real Jobs'}
+              </button>
+              <button onClick={fetchJobs}
+                style={{ padding: '13px 24px', borderRadius: 14, border: `1.5px solid ${accent}`, background: '#fff', color: accent, fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                ✦ Generate More
+              </button>
+            </div>
           </div>
         )}
 
