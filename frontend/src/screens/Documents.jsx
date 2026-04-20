@@ -24,6 +24,18 @@ export default function Documents() {
     setBaseContent(profile?.resume_text || '')
   }, [profile?.resume_text])
 
+  const downloadDoc = (content, filename) => {
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   const appsWithVariants = applications.filter((a) => a.resume_variant_id)
   const appsWithCoverLetters = applications.filter((a) => a.cover_letter_id)
 
@@ -121,6 +133,11 @@ export default function Documents() {
                     <span style={labelStyle}>Your Resume</span>
                     <span style={{ background: '#f0effb', color: accent, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11, padding: '2px 8px', borderRadius: 10 }}>Base</span>
                   </div>
+                  {baseContent && (
+                    <button onClick={() => downloadDoc(baseContent, 'resume.txt')} style={actionBtn(true)}>
+                      ↓ Download
+                    </button>
+                  )}
                   <button onClick={() => setEditingBase((v) => !v)} style={actionBtn(false)}>
                     {editingBase ? 'Done' : 'Edit'}
                   </button>
@@ -161,7 +178,10 @@ export default function Documents() {
                         <button onClick={() => loadDoc('variant', id)} style={actionBtn(true)}>View</button>
                       )}
                       {content !== undefined && !isEditing && (
-                        <button onClick={() => setEditingId(id)} style={actionBtn(false)}>Edit</button>
+                        <>
+                          <button onClick={() => downloadDoc(content, `${app.company.toLowerCase().replace(/\s+/g, '_')}_resume.txt`)} style={actionBtn(true)}>↓</button>
+                          <button onClick={() => setEditingId(id)} style={actionBtn(false)}>Edit</button>
+                        </>
                       )}
                       {isEditing && (
                         <>
@@ -214,7 +234,10 @@ export default function Documents() {
                           <button onClick={() => loadDoc('cl', id)} style={actionBtn(true)}>View</button>
                         )}
                         {content !== undefined && !isEditing && (
-                          <button onClick={() => setEditingId(id)} style={actionBtn(false)}>Edit</button>
+                          <>
+                            <button onClick={() => downloadDoc(content, `${app.company.toLowerCase().replace(/\s+/g, '_')}_cover_letter.txt`)} style={actionBtn(true)}>↓</button>
+                            <button onClick={() => setEditingId(id)} style={actionBtn(false)}>Edit</button>
+                          </>
                         )}
                         {isEditing && (
                           <>
