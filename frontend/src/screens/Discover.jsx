@@ -143,8 +143,20 @@ export default function Discover() {
       {/* Card stack */}
       <div style={{ flex: 1, position: 'relative', margin: '14px 20px 20px', minHeight: 0 }}>
         {loading && (
-          <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#b0aeb8' }}>Loading jobs…</div>
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+            <style>{`
+              @keyframes hm-spin { to { transform: rotate(360deg); } }
+              @keyframes hm-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+            `}</style>
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%',
+              border: `3px solid ${accent}22`,
+              borderTopColor: accent,
+              animation: 'hm-spin 0.9s linear infinite',
+            }} />
+            <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#b0aeb8', animation: 'hm-pulse 1.6s ease-in-out infinite' }}>
+              Finding jobs for you…
+            </div>
           </div>
         )}
 

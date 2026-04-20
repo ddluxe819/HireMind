@@ -7,42 +7,6 @@ import Log from './screens/Log'
 import Documents from './screens/Documents'
 import Profile from './screens/Profile'
 
-function StatusBar() {
-  const [time, setTime] = useState('')
-  useEffect(() => {
-    const tick = () => {
-      const d = new Date()
-      setTime(d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }))
-    }
-    tick()
-    const id = setInterval(tick, 10000)
-    return () => clearInterval(id)
-  }, [])
-
-  return (
-    <div style={{ height: 50, background: '#f5f4f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px 0', flexShrink: 0, position: 'relative' }}>
-      {/* Dynamic island pill */}
-      <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', width: 88, height: 26, background: '#0c0e1c', borderRadius: 20 }} />
-      <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 14, color: '#0c0e1c', zIndex: 1 }}>{time}</span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, zIndex: 1 }}>
-        {/* WiFi */}
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0c0e1c" strokeWidth="2" strokeLinecap="round">
-          <path d="M5 12.55a11 11 0 0 1 14.08 0" />
-          <path d="M1.42 9a16 16 0 0 1 21.16 0" />
-          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-          <circle cx="12" cy="20" r="1" fill="#0c0e1c" />
-        </svg>
-        {/* Battery */}
-        <svg width="22" height="12" viewBox="0 0 24 12" fill="none">
-          <rect x="0.5" y="0.5" width="19" height="11" rx="2" stroke="#0c0e1c" strokeWidth="1.2" />
-          <rect x="2" y="2" width="15" height="8" rx="1" fill="#0c0e1c" />
-          <path d="M21 4v4" stroke="#0c0e1c" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </div>
-    </div>
-  )
-}
-
 function TweaksPanel({ tweaks, updateTweak }) {
   const accent = tweaks.accentColor
   const COLORS = ['#5047e5', '#0ea5a0', '#e8612a', '#e5476a', '#059669']
@@ -95,38 +59,25 @@ export default function App() {
 
   return (
     <>
-      {/* Phone bezel */}
       <div style={{
-        width: 390, height: 844,
-        background: '#0c0e1c',
-        borderRadius: 54,
-        padding: 12,
-        boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 40px 100px rgba(0,0,0,0.6), 0 10px 30px rgba(80,71,229,0.2)',
-        position: 'relative',
-        flexShrink: 0,
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        background: '#f5f4f0',
       }}>
-        {/* Inner screen */}
-        <div style={{
-          width: '100%', height: '100%',
-          background: '#f5f4f0',
-          borderRadius: 44,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-        }}>
-          {screen === 'onboarding' ? (
-            <Onboarding onComplete={async (form) => { await saveProfile(form); setScreen('discover') }} />
-          ) : (
-            <>
-              <StatusBar />
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-                {SCREENS[screen]}
-              </div>
-              <BottomNav />
-            </>
-          )}
-        </div>
+        {screen === 'onboarding' ? (
+          <Onboarding onComplete={async (form) => { await saveProfile(form); setScreen('discover') }} />
+        ) : (
+          <>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+              {SCREENS[screen]}
+            </div>
+            <BottomNav />
+          </>
+        )}
       </div>
 
       {showTweaks && <TweaksPanel tweaks={tweaks} updateTweak={updateTweak} />}

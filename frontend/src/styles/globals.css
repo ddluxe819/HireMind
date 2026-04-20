@@ -19,7 +19,7 @@
 
 html, body {
   height: 100%;
-  background: #1a1824;
+  background: #f5f4f0;
   font-family: var(--font-body);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
@@ -27,21 +27,11 @@ html, body {
   overflow: hidden;
 }
 
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 80% 60% at 20% 30%, rgba(80,71,229,0.2) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 80% 70%, rgba(14,165,160,0.13) 0%, transparent 60%);
-  pointer-events: none;
-}
-
 #root {
   height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 button { cursor: pointer; border: none; background: none; font: inherit; }

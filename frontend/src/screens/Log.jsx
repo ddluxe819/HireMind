@@ -252,7 +252,16 @@ function AppRow({ app, onOpenExtension, accent }) {
   const [expanded, setExpanded] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState('')
+  const [extLoading, setExtLoading] = useState(false)
   const { generateDocs, updateApplicationStatus } = useAppStore()
+
+  const handleOpenExtension = () => {
+    setExtLoading(true)
+    setTimeout(() => {
+      onOpenExtension(app)
+      setExtLoading(false)
+    }, 400)
+  }
 
   const handleGenerate = async () => {
     setGenerating(true)
@@ -337,13 +346,20 @@ function AppRow({ app, onOpenExtension, accent }) {
             </>
           )}
           {(app.status === 'ready' || app.resume_variant_id) && (
-            <button onClick={() => onOpenExtension(app)}
-              style={{ width: '100%', marginTop: 10, padding: 11, borderRadius: 12, border: 'none', background: accent, color: '#fff', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
-              Open in Chrome Extension
-            </button>
+            <>
+              <style>{`@keyframes hm-spin { to { transform: rotate(360deg); } }`}</style>
+              <button onClick={handleOpenExtension} disabled={extLoading}
+                style={{ width: '100%', marginTop: 10, padding: 11, borderRadius: 12, border: 'none', background: extLoading ? accent + 'cc' : accent, color: '#fff', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: extLoading ? 'default' : 'pointer', transition: 'background 0.2s' }}>
+                {extLoading ? (
+                  <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'hm-spin 0.75s linear infinite', flexShrink: 0 }} />
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                )}
+                {extLoading ? 'Opening…' : 'Open in Chrome Extension'}
+              </button>
+            </>
           )}
         </div>
       )}
