@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 
+const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api'
+
 const FALLBACK_SKILLS = ['Product Design', 'UX Research', 'Design Systems', 'Figma', 'Prototyping', 'Frontend', 'Motion', 'Brand']
 const INDUSTRY_OPTS = [
   'Fintech', 'SaaS', 'Consumer', 'Dev Tools', 'Healthcare', 'AI/ML',
@@ -63,7 +65,7 @@ export default function Onboarding({ onComplete }) {
     const fd = new FormData()
     fd.append('file', file)
     try {
-      const res = await fetch('/api/documents/resumes/upload', { method: 'POST', body: fd })
+      const res = await fetch(`${API}/documents/resumes/upload`, { method: 'POST', body: fd })
       if (!res.ok) throw new Error()
       const data = await res.json()
       setForm((f) => ({ ...f, resume_base_id: data.id, resume_filename: file.name, resume_text: data.content || '' }))
@@ -81,7 +83,7 @@ export default function Onboarding({ onComplete }) {
     const resumeText = form.resume_text
     if (!title && !resumeText) return
     setSkillsLoading(true)
-    fetch('/api/documents/skills/suggest', {
+    fetch(`${API}/documents/skills/suggest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ job_title: title, resume_text: resumeText }),
