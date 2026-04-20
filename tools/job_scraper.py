@@ -133,16 +133,18 @@ ALL_SOURCES = list(SOURCE_MAP.keys())
 def aggregate(
     query: str,
     location: str = "",
-    limit: int = 20,
+    limit: int = 50,
     sources: list[str] | None = None,
 ) -> list[dict]:
     active = sources or ALL_SOURCES
     print(f"[job_scraper] Query: '{query}' | Location: '{location or 'any'}' | Sources: {', '.join(active)}")
 
+    # Fetch more per source than needed so dedup still yields `limit` results.
+    fetch_per_source = max(limit, limit * 2 // len(active))
     raw: list[dict] = []
     with ThreadPoolExecutor(max_workers=len(active)) as pool:
         futures = {
-            pool.submit(SOURCE_MAP[s], query, location, limit): s
+            pool.submit(SOURCE_MAP[s], query, location, fetch_per_source): s
             for s in active if s in SOURCE_MAP
         }
         for future in as_completed(futures):
@@ -172,7 +174,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="HireMind unified job scraper")
     parser.add_argument("query", help='Search query e.g. "product designer"')
     parser.add_argument("--location", default="", help="Location filter (default: any/remote)")
-    parser.add_argument("--limit", type=int, default=20, help="Max results after dedup")
+    parser.add_argument("--limit", type=int, default=50, help="Max results after dedup")
     parser.add_argument(
         "--sources", nargs="+", choices=ALL_SOURCES,
         help=f"Sources to use (default: all). Options: {', '.join(ALL_SOURCES)}"
