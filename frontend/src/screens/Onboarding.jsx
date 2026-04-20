@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 
 const FALLBACK_SKILLS = ['Product Design', 'UX Research', 'Design Systems', 'Figma', 'Prototyping', 'Frontend', 'Motion', 'Brand']
-const INDUSTRY_OPTS = ['Fintech', 'SaaS', 'Consumer', 'Dev Tools', 'Healthcare', 'AI/ML', 'E-commerce', 'Media']
+const INDUSTRY_OPTS = [
+  'Fintech', 'SaaS', 'Consumer', 'Dev Tools', 'Healthcare', 'AI/ML',
+  'E-commerce', 'Media', 'Cybersecurity', 'EdTech', 'Legal Tech', 'Climate Tech',
+  'Real Estate', 'Supply Chain', 'Gaming', 'Social', 'Enterprise', 'Biotech',
+  'Infrastructure', 'Marketplace',
+]
 
 const STEPS = [
   { title: 'Welcome to HireMind', sub: 'Set up your profile in under 2 minutes.' },

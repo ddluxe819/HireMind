@@ -80,7 +80,7 @@ const SCREENS = {
 }
 
 export default function App() {
-  const { screen, setScreen, tweaks, updateTweak, setProfile } = useAppStore()
+  const { screen, setScreen, tweaks, updateTweak, saveProfile } = useAppStore()
   const [showTweaks, setShowTweaks] = useState(false)
 
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function App() {
           position: 'relative',
         }}>
           {screen === 'onboarding' ? (
-            <Onboarding onComplete={(profile) => { setProfile(profile); setScreen('discover') }} />
+            <Onboarding onComplete={async (form) => { await saveProfile(form); setScreen('discover') }} />
           ) : (
             <>
               <StatusBar />

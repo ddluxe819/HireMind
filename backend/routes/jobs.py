@@ -2,9 +2,11 @@ import json
 import os
 import uuid
 import anthropic
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException, Depends
+from supabase import Client
 from typing import List, Optional
 
+from backend.db.database import get_db
 from backend.models.job import JobListing
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -111,19 +113,41 @@ def get_discover_feed(
     title: Optional[str] = Query(None),
     skills: Optional[str] = Query(None),
     experience: Optional[str] = Query(None),
+    db: Client = Depends(get_db),
 ):
     if title or skills:
         try:
-            return _generate_jobs_with_claude(title or "", skills, experience)
+            jobs = _generate_jobs_with_claude(title or "", skills, experience)
+            rows = [
+                {
+                    "id": j.id,
+                    "company": j.company,
+                    "title": j.title,
+                    "location": j.location,
+                    "salary_range": j.salary_range,
+                    "job_type": j.job_type,
+                    "description": j.description,
+                    "apply_url": j.apply_url,
+                    "platform": j.platform,
+                    "match_score": j.match_score,
+                    "tags": j.tags,
+                    "posted_at": j.posted_at,
+                }
+                for j in jobs
+            ]
+            db.table("job_listings").upsert(rows).execute()
+            return jobs
         except Exception:
             pass
     return MOCK_JOBS
 
 
 @router.get("/{job_id}", response_model=JobListing)
-def get_job(job_id: str):
+def get_job(job_id: str, db: Client = Depends(get_db)):
+    result = db.table("job_listings").select("*").eq("id", job_id).single().execute()
+    if result.data:
+        return result.data
     match = next((j for j in MOCK_JOBS if j.id == job_id), None)
     if not match:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Job not found")
     return match

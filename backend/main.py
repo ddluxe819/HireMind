@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from backend.routes import applications, documents, jobs
+from backend.routes import applications, documents, jobs, profiles
 
 app = FastAPI(title="HireMind API", version="0.1.0")
 
@@ -20,6 +20,7 @@ app.add_middleware(
 app.include_router(applications.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
+app.include_router(profiles.router, prefix="/api")
 
 
 @app.get("/health")

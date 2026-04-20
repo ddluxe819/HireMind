@@ -89,6 +89,7 @@ export const useAppStore = create((set, get) => ({
           company: job.company,
           title: job.title,
           apply_url: job.apply_url || '',
+          resume_base_id: get().profile?.resume_base_id || undefined,
         }),
       })
       if (!res.ok) throw new Error()
@@ -132,6 +133,38 @@ export const useAppStore = create((set, get) => ({
       window.open(`${app.apply_url}#hiremind-app-id=${app.id}`, '_blank')
     }
     get().updateApplicationStatus(app.id, 'opened')
+  },
+
+  saveProfile: async (formData) => {
+    const existing = get().profile
+    try {
+      const isUpdate = Boolean(existing?.profile_id)
+      const url = isUpdate
+        ? `${API}/profiles/${existing.profile_id}`
+        : `${API}/profiles/`
+      const res = await fetch(url, {
+        method: isUpdate ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name || undefined,
+          title: formData.title || undefined,
+          location: formData.location || undefined,
+          experience: formData.experience || undefined,
+          skills: formData.skills,
+          industries: formData.industries,
+          salary: formData.salary || undefined,
+          resume_base_id: formData.resume_base_id || undefined,
+        }),
+      })
+      if (!res.ok) throw new Error('Profile save failed')
+      const saved = await res.json()
+      const merged = { ...formData, profile_id: saved.id }
+      try { localStorage.setItem(PROFILE_KEY, JSON.stringify(merged)) } catch {}
+      set({ profile: merged })
+    } catch {
+      try { localStorage.setItem(PROFILE_KEY, JSON.stringify(formData)) } catch {}
+      set({ profile: formData })
+    }
   },
 
   resetOnboarding: () => {
