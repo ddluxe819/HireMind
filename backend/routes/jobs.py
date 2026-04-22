@@ -2,6 +2,7 @@ import json
 import os
 import uuid
 import anthropic
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from fastapi import APIRouter, Query, HTTPException, Depends
 from pydantic import BaseModel
 from supabase import Client
@@ -63,16 +64,16 @@ MOCK_JOBS: List[JobListing] = [
 ]
 
 
-def _generate_jobs_with_claude(title: str, skills: Optional[str], experience: Optional[str], exclude: Optional[str] = None) -> List[JobListing]:
-    skills_list = [s.strip() for s in skills.split(",") if s.strip()] if skills else []
-    skills_str = ", ".join(skills_list) if skills_list else "general"
-    exp_str = experience or "several years of"
-    exclude_list = [c.strip() for c in exclude.split(",") if c.strip()] if exclude else []
-    exclude_clause = f"\nDo NOT use these companies (already shown): {', '.join(exclude_list)}." if exclude_list else ""
+_BATCH_FOCUSES = [
+    "large, well-known enterprise and Fortune 500 companies",
+    "mid-size, growth-stage, and established regional companies",
+    "startups, agencies, consultancies, and innovative smaller companies",
+]
 
+def _generate_batch(title: str, skills_str: str, exp_str: str, exclude_clause: str, focus: str) -> List[JobListing]:
     prompt = f"""Generate 10 realistic job listings for a candidate seeking a "{title}" role with {exp_str} experience. Key skills: {skills_str}.{exclude_clause}
 
-Choose well-known companies across a wide variety of industries — do not limit to any one sector. Prioritize companies that genuinely hire for "{title}" roles. Vary company size, industry, and location to maximize the breadth of relevant opportunities.
+Focus this batch on {focus}. Choose companies across a wide variety of industries — do not limit to any one sector. Prioritize companies that genuinely hire for "{title}" roles. Vary industry and location to maximize breadth.
 
 Return a JSON array of exactly 10 objects with these fields:
 - company: well-known company name appropriate for this role (string)
@@ -94,15 +95,12 @@ Return ONLY the JSON array."""
         max_tokens=4096,
         messages=[{"role": "user", "content": prompt}]
     )
-
     raw = response.content[0].text.strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-
     jobs_data = json.loads(raw)
-    result = []
-    for job in jobs_data:
-        result.append(JobListing(
+    return [
+        JobListing(
             id=str(uuid.uuid4()),
             company=job.get("company", ""),
             title=job.get("title", ""),
@@ -115,8 +113,38 @@ Return ONLY the JSON array."""
             match_score=job.get("match_score"),
             tags=job.get("tags", []),
             posted_at=job.get("posted_at"),
-        ))
-    return result
+        )
+        for job in jobs_data
+    ]
+
+
+def _generate_jobs_with_claude(title: str, skills: Optional[str], experience: Optional[str], exclude: Optional[str] = None) -> List[JobListing]:
+    skills_list = [s.strip() for s in skills.split(",") if s.strip()] if skills else []
+    skills_str = ", ".join(skills_list) if skills_list else "general"
+    exp_str = experience or "several years of"
+    exclude_list = [c.strip() for c in exclude.split(",") if c.strip()] if exclude else []
+    exclude_clause = f"\nDo NOT use these companies (already shown): {', '.join(exclude_list)}." if exclude_list else ""
+
+    results: List[JobListing] = []
+    seen_keys: set = set()
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {
+            executor.submit(_generate_batch, title, skills_str, exp_str, exclude_clause, focus): focus
+            for focus in _BATCH_FOCUSES
+        }
+        for future in as_completed(futures):
+            try:
+                batch = future.result()
+                for job in batch:
+                    key = f"{job.company.lower()}::{job.title.lower()}"
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        results.append(job)
+            except Exception as e:
+                print(f"[jobs/discover] Batch failed ({futures[future]}): {e}")
+
+    return results
 
 
 @router.get("/discover", response_model=List[JobListing])
