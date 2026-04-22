@@ -80,7 +80,10 @@ export const useAppStore = create((set, get) => ({
       let url = `${API}/jobs/discover`
       const params = new URLSearchParams()
 
-      if (profile?.title) params.set('title', profile.title)
+      // Always send title so the backend triggers Claude generation.
+      // Fall back to 'Professional' when there's no profile title yet.
+      const effectiveTitle = profile?.title || 'Professional'
+      params.set('title', effectiveTitle)
       if (profile?.skills?.length) params.set('skills', profile.skills.join(','))
       if (profile?.experience) params.set('experience', profile.experience)
 
