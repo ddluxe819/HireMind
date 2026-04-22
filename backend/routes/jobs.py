@@ -170,9 +170,10 @@ def get_discover_feed(
     radius: Optional[int] = Query(None),
     db: Client = Depends(get_db),
 ):
-    if title or skills:
+    if title or skills or work_mode or location:
         try:
-            jobs = _generate_jobs_with_claude(title or "", skills, experience, exclude, location, work_mode, radius or 0)
+            effective_title = title or "Professional"
+            jobs = _generate_jobs_with_claude(effective_title, skills, experience, exclude, location, work_mode, radius or 0)
             rows = [
                 {
                     "id": j.id,

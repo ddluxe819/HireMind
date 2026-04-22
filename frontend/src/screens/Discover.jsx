@@ -5,44 +5,6 @@ import MatchRing from '../components/MatchRing'
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 
-function IconRemote({ color }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2"/>
-      <line x1="8" y1="21" x2="16" y2="21"/>
-      <line x1="12" y1="17" x2="12" y2="21"/>
-    </svg>
-  )
-}
-
-function IconHybrid({ color }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 4l4 4-4 4"/>
-      <path d="M3 12V8a4 4 0 0 1 4-4h14"/>
-      <path d="M7 20l-4-4 4-4"/>
-      <path d="M21 12v4a4 4 0 0 1-4 4H3"/>
-    </svg>
-  )
-}
-
-function IconOnsite({ color }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="20" height="15" rx="1"/>
-      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-    </svg>
-  )
-}
-
-function IconCheck() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12"/>
-    </svg>
-  )
-}
-
 function IconSliders({ color }) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -56,26 +18,74 @@ function IconSliders({ color }) {
   )
 }
 
-// ── WorkModeGate ───────────────────────────────────────────────────────────────
+// ── WorkModeGate data ─────────────────────────────────────────────────────────
 
-const MODE_CONFIG = {
-  Remote:   { desc: 'Work from anywhere',      iconBg: '#dcfce7', color: '#16a34a', border: '#22c55e', activeBg: '#f0fdf4' },
-  Hybrid:   { desc: 'Mix of home & office',    iconBg: '#ede9fe', color: '#5047e5', border: '#5047e5', activeBg: '#f0effb' },
-  'On-site':{ desc: 'In-person, full time',    iconBg: '#ffedd5', color: '#ea580c', border: '#fb923c', activeBg: '#fff7ed' },
+const WORK_MODE_OPTIONS = [
+  { value: 'Remote',   label: 'Remote',   desc: 'Work from anywhere' },
+  { value: 'Hybrid',   label: 'Hybrid',   desc: 'Mix of home & office' },
+  { value: 'On-site',  label: 'On-site',  desc: 'In-person, full time' },
+]
+
+const MODE_STYLE = {
+  Remote:   { color: '#16a34a', bg: '#f0fdf4', border: '#22c55e' },
+  Hybrid:   { color: '#5047e5', bg: '#f0effb', border: '#5047e5' },
+  'On-site':{ color: '#ea580c', bg: '#fff7ed', border: '#fb923c' },
+}
+
+const US_CITIES = [
+  'Atlanta, GA', 'Austin, TX', 'Baltimore, MD', 'Boston, MA',
+  'Charlotte, NC', 'Chicago, IL', 'Cincinnati, OH', 'Cleveland, OH',
+  'Columbus, OH', 'Dallas, TX', 'Denver, CO', 'Detroit, MI',
+  'Houston, TX', 'Indianapolis, IN', 'Jacksonville, FL', 'Kansas City, MO',
+  'Las Vegas, NV', 'Los Angeles, CA', 'Louisville, KY', 'Memphis, TN',
+  'Miami, FL', 'Milwaukee, WI', 'Minneapolis, MN', 'Nashville, TN',
+  'New Orleans, LA', 'New York, NY', 'Oklahoma City, OK', 'Orlando, FL',
+  'Philadelphia, PA', 'Phoenix, AZ', 'Pittsburgh, PA', 'Portland, OR',
+  'Raleigh, NC', 'Richmond, VA', 'Sacramento, CA', 'Salt Lake City, UT',
+  'San Antonio, TX', 'San Diego, CA', 'San Francisco, CA', 'San Jose, CA',
+  'Seattle, WA', 'St. Louis, MO', 'Tampa, FL', 'Washington, DC',
+]
+
+function SelectField({ label, hint, value, onChange, placeholder, children }) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 15, color: '#0c0e1c', marginBottom: 4 }}>
+        {label}{' '}
+        {hint && <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 13, color: '#9a9fa8' }}>{hint}</span>}
+      </div>
+      <div style={{ position: 'relative' }}>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value || null)}
+          style={{
+            width: '100%', padding: '14px 44px 14px 16px', borderRadius: 12,
+            border: `1.5px solid ${value ? '#5047e5' : '#e0dfd8'}`,
+            fontFamily: 'DM Sans, sans-serif', fontSize: 14,
+            color: value ? '#0c0e1c' : '#9a9fa8',
+            background: '#fff', boxSizing: 'border-box',
+            appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer', outline: 'none',
+          }}
+        >
+          <option value="">{placeholder}</option>
+          {children}
+        </select>
+        <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9a9fa8' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function WorkModeGate({ initialPrefs, accent, onStart }) {
-  const [workMode, setWorkMode] = useState(initialPrefs?.workMode || null)
+  const [workMode, setWorkMode] = useState(initialPrefs?.workMode || '')
   const [location, setLocation] = useState(initialPrefs?.location || '')
 
   const needsLocation = workMode === 'Hybrid' || workMode === 'On-site'
-  const canStart = workMode !== null
-
-  const modeIcon = (key, color) => {
-    if (key === 'Remote') return <IconRemote color={color} />
-    if (key === 'Hybrid') return <IconHybrid color={color} />
-    return <IconOnsite color={color} />
-  }
+  const canStart = Boolean(workMode)
+  const modeStyle = MODE_STYLE[workMode]
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f5f4f0', overflow: 'hidden' }}>
@@ -88,109 +98,60 @@ function WorkModeGate({ initialPrefs, accent, onStart }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '28px 20px 0' }}>
-        <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 16, color: '#0c0e1c', marginBottom: 14 }}>
-          Where do you want to work?
-        </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '32px 20px 0' }}>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32 }}>
-          {Object.entries(MODE_CONFIG).map(([key, cfg]) => {
-            const active = workMode === key
-            const iconColor = active ? cfg.color : '#b0aeb8'
-            return (
-              <button
-                key={key}
-                onClick={() => setWorkMode(active ? null : key)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px',
-                  borderRadius: 16, border: `2px solid ${active ? cfg.border : '#e0dfd8'}`,
-                  background: active ? cfg.activeBg : '#fff', cursor: 'pointer', textAlign: 'left',
-                  transition: 'border-color 0.2s, background 0.2s', width: '100%',
-                }}
-              >
-                <div style={{
-                  width: 46, height: 46, borderRadius: 13,
-                  background: active ? cfg.iconBg : '#f6f5f0',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, transition: 'background 0.2s',
-                }}>
-                  {modeIcon(key, iconColor)}
-                </div>
+        <SelectField
+          label="Work arrangement"
+          value={workMode}
+          onChange={setWorkMode}
+          placeholder="Select work arrangement…"
+        >
+          {WORK_MODE_OPTIONS.map(({ value, label, desc }) => (
+            <option key={value} value={value}>{label} — {desc}</option>
+          ))}
+        </SelectField>
 
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 15,
-                    color: active ? cfg.color : '#0c0e1c',
-                  }}>
-                    {key}
-                  </div>
-                  <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8', marginTop: 1 }}>
-                    {cfg.desc}
-                  </div>
-                </div>
-
-                {active && (
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%', background: cfg.color,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}>
-                    <IconCheck />
-                  </div>
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 16, color: '#0c0e1c', marginBottom: 4 }}>
-            Your location{' '}
-            <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 13, color: '#9a9fa8' }}>
-              {needsLocation ? '(for nearby search)' : '(optional)'}
+        {/* Work mode badge */}
+        {workMode && modeStyle && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '6px 12px', borderRadius: 20, marginBottom: 24,
+            background: modeStyle.bg, border: `1.5px solid ${modeStyle.border}22`,
+          }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: modeStyle.color }} />
+            <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: 600, color: modeStyle.color }}>
+              {workMode === 'Remote' ? 'No location required' : '100-mile radius search'}
             </span>
           </div>
+        )}
 
-          <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#b0aeb8', pointerEvents: 'none' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
-            </div>
-            <input
-              value={location}
-              placeholder="City, state or ZIP code"
-              onChange={(e) => setLocation(e.target.value)}
-              style={{
-                width: '100%', padding: '13px 14px 13px 40px', borderRadius: 12,
-                border: `1.5px solid ${needsLocation && !location ? '#fbbf24' : '#e0dfd8'}`,
-                fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#0c0e1c',
-                background: '#fff', boxSizing: 'border-box', outline: 'none',
-                transition: 'border-color 0.2s',
-              }}
-            />
+        <SelectField
+          label="Your location"
+          hint={workMode === 'Remote' ? '(optional)' : needsLocation ? '(required for nearby search)' : '(optional)'}
+          value={location}
+          onChange={(v) => setLocation(v || '')}
+          placeholder="Select your city…"
+        >
+          {workMode === 'Remote' && <option value="Any">Anywhere — no preference</option>}
+          {US_CITIES.map((city) => (
+            <option key={city} value={city}>{city}</option>
+          ))}
+        </SelectField>
+
+        {needsLocation && location && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '12px 14px', background: '#f0effb', borderRadius: 12, marginTop: -8, marginBottom: 20,
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: accent, fontWeight: 500 }}>
+              Searching within 100 miles of {location}
+            </span>
           </div>
+        )}
 
-          {needsLocation && location && (
-            <div style={{
-              marginTop: 8, display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 12px', background: '#f0effb', borderRadius: 10,
-            }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: accent, fontWeight: 500 }}>
-                Searching within 100 miles of {location}
-              </span>
-            </div>
-          )}
-
-          {needsLocation && !location && (
-            <div style={{ marginTop: 6, fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#b45309' }}>
-              Add your location to find nearby {workMode?.toLowerCase()} roles
-            </div>
-          )}
-        </div>
       </div>
 
       <div style={{ padding: '16px 20px 24px' }}>

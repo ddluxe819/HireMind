@@ -78,27 +78,28 @@ export const useAppStore = create((set, get) => ({
       const seenJobs = get().seenJobs
       const discoverPrefs = get().discoverPrefs
       let url = `${API}/jobs/discover`
-      if (profile) {
-        const params = new URLSearchParams()
-        if (profile.title) params.set('title', profile.title)
-        if (profile.skills?.length) params.set('skills', profile.skills.join(','))
-        if (profile.experience) params.set('experience', profile.experience)
-        // discoverPrefs override profile location and work_mode when set
-        const location = discoverPrefs?.location || profile.location
-        const workMode = discoverPrefs?.workMode || profile.work_mode
-        if (location) params.set('location', location)
-        if (workMode) params.set('work_mode', workMode)
-        if (discoverPrefs?.useRadius && location) params.set('radius', '100')
-        // Pass seen companies so Claude avoids repeating them
-        if (seenJobs.size > 0) {
-          const seenArr = [...seenJobs]
-          // seenJobs stores "company::title" keys — extract unique companies
-          const companies = [...new Set(seenArr.map((k) => k.split('::')[0]))].slice(-20)
-          if (companies.length) params.set('exclude', companies.join(','))
-        }
-        const qs = params.toString()
-        if (qs) url += '?' + qs
+      const params = new URLSearchParams()
+
+      if (profile?.title) params.set('title', profile.title)
+      if (profile?.skills?.length) params.set('skills', profile.skills.join(','))
+      if (profile?.experience) params.set('experience', profile.experience)
+
+      // discoverPrefs override profile location and work_mode when set
+      const location = discoverPrefs?.location || profile?.location
+      const workMode = discoverPrefs?.workMode || profile?.work_mode
+      if (location) params.set('location', location)
+      if (workMode) params.set('work_mode', workMode)
+      if (discoverPrefs?.useRadius && location) params.set('radius', '100')
+
+      // Pass seen companies so Claude avoids repeating them
+      if (seenJobs.size > 0) {
+        const seenArr = [...seenJobs]
+        const companies = [...new Set(seenArr.map((k) => k.split('::')[0]))].slice(-20)
+        if (companies.length) params.set('exclude', companies.join(','))
       }
+
+      const qs = params.toString()
+      if (qs) url += '?' + qs
       const res = await fetch(url)
       if (!res.ok) throw new Error('API unavailable')
       const jobs = await res.json()
