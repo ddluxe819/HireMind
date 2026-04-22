@@ -73,7 +73,7 @@ export default function JobCard({ job, onGone }) {
         </animated.div>
 
         {/* Header row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
           <div style={{
             width: 48, height: 48, borderRadius: 14,
             background: job.color || accent,
@@ -91,6 +91,22 @@ export default function JobCard({ job, onGone }) {
             <MatchRing pct={job.match ?? job.match_score} accent={accent} />
           )}
         </div>
+
+        {/* Work mode badge */}
+        {job.work_mode && (() => {
+          const modeStyles = {
+            'Remote':  { bg: '#f0fdf4', color: '#16a34a', dot: '#22c55e' },
+            'Hybrid':  { bg: '#f0effb', color: '#5047e5', dot: '#5047e5' },
+            'On-site': { bg: '#fff7ed', color: '#ea580c', dot: '#f97316' },
+          }
+          const s = modeStyles[job.work_mode] || { bg: '#f6f5f0', color: '#6b6f7e', dot: '#9a9fa8' }
+          return (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: s.bg, borderRadius: 8, padding: '5px 10px', marginBottom: 12, alignSelf: 'flex-start' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: s.dot, flexShrink: 0, display: 'inline-block' }} />
+              <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 12, color: s.color }}>{job.work_mode}</span>
+            </div>
+          )
+        })()}
 
         {/* Title */}
         <div style={{ fontFamily: 'Playfair Display, Georgia, serif', fontWeight: 600, fontSize: 27, color: '#0c0e1c', lineHeight: 1.15, marginBottom: 12 }}>

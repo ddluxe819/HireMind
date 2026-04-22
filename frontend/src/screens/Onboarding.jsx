@@ -40,6 +40,7 @@ export default function Onboarding({ onComplete }) {
     linkedin_url: '', github_url: '', portfolio_url: '',
     experience: '', skills: [], industries: [], salary: '',
     work_authorized: null, requires_sponsorship: null,
+    work_mode: null,
     resume_base_id: null, resume_filename: null, resume_text: '',
   })
   const [uploadState, setUploadState] = useState('idle') // idle | uploading | success | error
@@ -311,6 +312,14 @@ export default function Onboarding({ onComplete }) {
         {/* Step 3 — Preferences */}
         {step === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, color: '#0c0e1c', marginBottom: 8 }}>Work arrangement</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {['Remote', 'Hybrid', 'On-site', 'No preference'].map((v) => (
+                  <button key={v} onClick={() => setForm((f) => ({ ...f, work_mode: f.work_mode === v ? null : v }))} style={gridBtn(form.work_mode === v)}>{v}</button>
+                ))}
+              </div>
+            </div>
             <div>
               <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, color: '#0c0e1c', marginBottom: 8 }}>Industries you love</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

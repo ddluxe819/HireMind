@@ -70,15 +70,26 @@ _BATCH_FOCUSES = [
     "startups, agencies, consultancies, and innovative smaller companies",
 ]
 
-def _generate_batch(title: str, skills_str: str, exp_str: str, exclude_clause: str, focus: str) -> List[JobListing]:
-    prompt = f"""Generate 10 realistic job listings for a candidate seeking a "{title}" role with {exp_str} experience. Key skills: {skills_str}.{exclude_clause}
+def _generate_batch(title: str, skills_str: str, exp_str: str, exclude_clause: str, focus: str, location_hint: str = "", work_mode_pref: str = "", radius: int = 0) -> List[JobListing]:
+    if location_hint and radius:
+        location_clause = f"\nThe candidate is based in {location_hint} — only include roles within {radius} miles of that location or fully remote roles."
+    elif location_hint:
+        location_clause = f"\nThe candidate is based in {location_hint} — prioritize roles in that region or remote-friendly roles."
+    else:
+        location_clause = ""
+    work_mode_clause = ""
+    if work_mode_pref and work_mode_pref.lower() != "no preference":
+        work_mode_clause = f"\nThe candidate prefers {work_mode_pref} work — weight results toward that work mode."
+
+    prompt = f"""Generate 10 realistic job listings for a candidate seeking a "{title}" role with {exp_str} experience. Key skills: {skills_str}.{exclude_clause}{location_clause}{work_mode_clause}
 
 Focus this batch on {focus}. Choose companies across a wide variety of industries — do not limit to any one sector. Prioritize companies that genuinely hire for "{title}" roles. Vary industry and location to maximize breadth.
 
 Return a JSON array of exactly 10 objects with these fields:
 - company: well-known company name appropriate for this role (string)
 - title: specific job title related to "{title}" (string)
-- location: "Remote" or "City, ST" (string)
+- location: city and state/country e.g. "San Francisco, CA" or "New York, NY" (string, never just "Remote" — use a real city)
+- work_mode: one of "Remote", "Hybrid", or "On-site" (string)
 - salary_range: e.g. "$120k–$160k" (string)
 - job_type: "Full-time" (string)
 - apply_url: realistic job board URL (string)
@@ -105,6 +116,7 @@ Return ONLY the JSON array."""
             company=job.get("company", ""),
             title=job.get("title", ""),
             location=job.get("location"),
+            work_mode=job.get("work_mode"),
             salary_range=job.get("salary_range"),
             job_type=job.get("job_type", "Full-time"),
             description=job.get("description"),
@@ -118,7 +130,7 @@ Return ONLY the JSON array."""
     ]
 
 
-def _generate_jobs_with_claude(title: str, skills: Optional[str], experience: Optional[str], exclude: Optional[str] = None) -> List[JobListing]:
+def _generate_jobs_with_claude(title: str, skills: Optional[str], experience: Optional[str], exclude: Optional[str] = None, location: Optional[str] = None, work_mode: Optional[str] = None, radius: int = 0) -> List[JobListing]:
     skills_list = [s.strip() for s in skills.split(",") if s.strip()] if skills else []
     skills_str = ", ".join(skills_list) if skills_list else "general"
     exp_str = experience or "several years of"
@@ -130,7 +142,7 @@ def _generate_jobs_with_claude(title: str, skills: Optional[str], experience: Op
 
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {
-            executor.submit(_generate_batch, title, skills_str, exp_str, exclude_clause, focus): focus
+            executor.submit(_generate_batch, title, skills_str, exp_str, exclude_clause, focus, location or "", work_mode or "", radius): focus
             for focus in _BATCH_FOCUSES
         }
         for future in as_completed(futures):
@@ -153,17 +165,21 @@ def get_discover_feed(
     skills: Optional[str] = Query(None),
     experience: Optional[str] = Query(None),
     exclude: Optional[str] = Query(None),
+    location: Optional[str] = Query(None),
+    work_mode: Optional[str] = Query(None),
+    radius: Optional[int] = Query(None),
     db: Client = Depends(get_db),
 ):
     if title or skills:
         try:
-            jobs = _generate_jobs_with_claude(title or "", skills, experience, exclude)
+            jobs = _generate_jobs_with_claude(title or "", skills, experience, exclude, location, work_mode, radius or 0)
             rows = [
                 {
                     "id": j.id,
                     "company": j.company,
                     "title": j.title,
                     "location": j.location,
+                    "work_mode": j.work_mode,
                     "salary_range": j.salary_range,
                     "job_type": j.job_type,
                     "description": j.description,
@@ -194,7 +210,8 @@ def scrape_jobs(payload: ScrapeRequest, db: Client = Depends(get_db)):
     rows = [
         {
             "id": j.id, "company": j.company, "title": j.title,
-            "location": j.location, "salary_range": j.salary_range,
+            "location": j.location, "work_mode": j.work_mode,
+            "salary_range": j.salary_range,
             "job_type": j.job_type, "description": j.description,
             "apply_url": j.apply_url, "platform": j.platform,
             "match_score": j.match_score, "tags": j.tags, "posted_at": j.posted_at,

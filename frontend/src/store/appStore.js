@@ -6,6 +6,13 @@ const TWEAKS_KEY = 'hm_tweaks'
 const SCREEN_KEY = 'hm_screen'
 const PROFILE_KEY = 'hm_profile'
 const SEEN_JOBS_KEY = 'hm_seen_jobs'
+const DISCOVER_PREFS_KEY = 'hm_discover_prefs'
+
+const DEFAULT_DISCOVER_PREFS = { workMode: null, location: '', useRadius: false }
+
+function loadDiscoverPrefs() {
+  try { return JSON.parse(localStorage.getItem(DISCOVER_PREFS_KEY)) || DEFAULT_DISCOVER_PREFS } catch { return DEFAULT_DISCOVER_PREFS }
+}
 
 function loadSeenJobs() {
   try { return new Set(JSON.parse(localStorage.getItem(SEEN_JOBS_KEY)) || []) } catch { return new Set() }
@@ -38,6 +45,7 @@ export const useAppStore = create((set, get) => ({
   tweaks: loadTweaks(),
   profile: loadProfile(),
   seenJobs: loadSeenJobs(),
+  discoverPrefs: loadDiscoverPrefs(),
   jobs: [],
   applications: [],
   loading: false,
@@ -52,6 +60,11 @@ export const useAppStore = create((set, get) => ({
     set({ profile })
   },
 
+  setDiscoverPrefs: (prefs) => {
+    try { localStorage.setItem(DISCOVER_PREFS_KEY, JSON.stringify(prefs)) } catch {}
+    set({ discoverPrefs: prefs })
+  },
+
   updateTweak: (key, val) => {
     const tweaks = { ...get().tweaks, [key]: val }
     try { localStorage.setItem(TWEAKS_KEY, JSON.stringify(tweaks)) } catch {}
@@ -63,12 +76,19 @@ export const useAppStore = create((set, get) => ({
     try {
       const profile = get().profile
       const seenJobs = get().seenJobs
+      const discoverPrefs = get().discoverPrefs
       let url = `${API}/jobs/discover`
       if (profile) {
         const params = new URLSearchParams()
         if (profile.title) params.set('title', profile.title)
         if (profile.skills?.length) params.set('skills', profile.skills.join(','))
         if (profile.experience) params.set('experience', profile.experience)
+        // discoverPrefs override profile location and work_mode when set
+        const location = discoverPrefs?.location || profile.location
+        const workMode = discoverPrefs?.workMode || profile.work_mode
+        if (location) params.set('location', location)
+        if (workMode) params.set('work_mode', workMode)
+        if (discoverPrefs?.useRadius && location) params.set('radius', '100')
         // Pass seen companies so Claude avoids repeating them
         if (seenJobs.size > 0) {
           const seenArr = [...seenJobs]
@@ -191,12 +211,14 @@ export const useAppStore = create((set, get) => ({
     if (!profile?.title) return
     set({ loading: true })
     try {
+      const discoverPrefs = get().discoverPrefs
+      const location = discoverPrefs?.location || profile.location || ''
       const res = await fetch(`${API}/jobs/scrape`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: profile.title,
-          location: profile.location || '',
+          location,
           limit: 15,
         }),
       })
@@ -276,6 +298,7 @@ export const useAppStore = create((set, get) => ({
           salary: formData.salary || undefined,
           work_authorized: typeof formData.work_authorized === 'boolean' ? formData.work_authorized : undefined,
           requires_sponsorship: typeof formData.requires_sponsorship === 'boolean' ? formData.requires_sponsorship : undefined,
+          work_mode: formData.work_mode || undefined,
           resume_base_id: formData.resume_base_id || undefined,
         }),
       })

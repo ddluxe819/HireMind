@@ -15,6 +15,8 @@ export default function Profile() {
   ]
 
   const settings = [
+    ['Location', profile?.location || 'Not set'],
+    ['Work Arrangement', profile?.work_mode || 'Not set'],
     ['Resume', profile?.resume_base_id ? 'Resume uploaded' : 'No resume on file'],
     ['Industries', profile?.industries?.length ? profile.industries.slice(0, 3).join(', ') : 'Not set'],
     ['Salary', profile?.salary || 'Not set'],

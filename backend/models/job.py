@@ -7,6 +7,7 @@ class JobListing(BaseModel):
     company: str
     title: str
     location: Optional[str] = None
+    work_mode: Optional[str] = None  # "Remote", "Hybrid", "On-site"
     salary_range: Optional[str] = None
     job_type: Optional[str] = None
     description: Optional[str] = None

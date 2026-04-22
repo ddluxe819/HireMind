@@ -3,6 +3,217 @@ import { useAppStore } from '../store/appStore'
 import JobCard from '../components/JobCard'
 import MatchRing from '../components/MatchRing'
 
+// ── Icons ──────────────────────────────────────────────────────────────────────
+
+function IconRemote({ color }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+      <line x1="8" y1="21" x2="16" y2="21"/>
+      <line x1="12" y1="17" x2="12" y2="21"/>
+    </svg>
+  )
+}
+
+function IconHybrid({ color }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 4l4 4-4 4"/>
+      <path d="M3 12V8a4 4 0 0 1 4-4h14"/>
+      <path d="M7 20l-4-4 4-4"/>
+      <path d="M21 12v4a4 4 0 0 1-4 4H3"/>
+    </svg>
+  )
+}
+
+function IconOnsite({ color }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="15" rx="1"/>
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+    </svg>
+  )
+}
+
+function IconCheck() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  )
+}
+
+function IconSliders({ color }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="4" y1="6" x2="20" y2="6"/>
+      <line x1="4" y1="12" x2="20" y2="12"/>
+      <line x1="4" y1="18" x2="20" y2="18"/>
+      <circle cx="8" cy="6" r="2" fill={color}/>
+      <circle cx="16" cy="12" r="2" fill={color}/>
+      <circle cx="10" cy="18" r="2" fill={color}/>
+    </svg>
+  )
+}
+
+// ── WorkModeGate ───────────────────────────────────────────────────────────────
+
+const MODE_CONFIG = {
+  Remote:   { desc: 'Work from anywhere',      iconBg: '#dcfce7', color: '#16a34a', border: '#22c55e', activeBg: '#f0fdf4' },
+  Hybrid:   { desc: 'Mix of home & office',    iconBg: '#ede9fe', color: '#5047e5', border: '#5047e5', activeBg: '#f0effb' },
+  'On-site':{ desc: 'In-person, full time',    iconBg: '#ffedd5', color: '#ea580c', border: '#fb923c', activeBg: '#fff7ed' },
+}
+
+function WorkModeGate({ initialPrefs, accent, onStart }) {
+  const [workMode, setWorkMode] = useState(initialPrefs?.workMode || null)
+  const [location, setLocation] = useState(initialPrefs?.location || '')
+
+  const needsLocation = workMode === 'Hybrid' || workMode === 'On-site'
+  const canStart = workMode !== null
+
+  const modeIcon = (key, color) => {
+    if (key === 'Remote') return <IconRemote color={color} />
+    if (key === 'Hybrid') return <IconHybrid color={color} />
+    return <IconOnsite color={color} />
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f5f4f0', overflow: 'hidden' }}>
+      <div style={{ padding: '16px 20px 0' }}>
+        <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 800, fontSize: 22, color: '#0c0e1c' }}>
+          Discover
+        </div>
+        <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8', marginTop: 2 }}>
+          Personalize your job search
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '28px 20px 0' }}>
+        <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 16, color: '#0c0e1c', marginBottom: 14 }}>
+          Where do you want to work?
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32 }}>
+          {Object.entries(MODE_CONFIG).map(([key, cfg]) => {
+            const active = workMode === key
+            const iconColor = active ? cfg.color : '#b0aeb8'
+            return (
+              <button
+                key={key}
+                onClick={() => setWorkMode(active ? null : key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px',
+                  borderRadius: 16, border: `2px solid ${active ? cfg.border : '#e0dfd8'}`,
+                  background: active ? cfg.activeBg : '#fff', cursor: 'pointer', textAlign: 'left',
+                  transition: 'border-color 0.2s, background 0.2s', width: '100%',
+                }}
+              >
+                <div style={{
+                  width: 46, height: 46, borderRadius: 13,
+                  background: active ? cfg.iconBg : '#f6f5f0',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, transition: 'background 0.2s',
+                }}>
+                  {modeIcon(key, iconColor)}
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 15,
+                    color: active ? cfg.color : '#0c0e1c',
+                  }}>
+                    {key}
+                  </div>
+                  <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8', marginTop: 1 }}>
+                    {cfg.desc}
+                  </div>
+                </div>
+
+                {active && (
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%', background: cfg.color,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <IconCheck />
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 16, color: '#0c0e1c', marginBottom: 4 }}>
+            Your location{' '}
+            <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 13, color: '#9a9fa8' }}>
+              {needsLocation ? '(for nearby search)' : '(optional)'}
+            </span>
+          </div>
+
+          <div style={{ position: 'relative' }}>
+            <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#b0aeb8', pointerEvents: 'none' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <input
+              value={location}
+              placeholder="City, state or ZIP code"
+              onChange={(e) => setLocation(e.target.value)}
+              style={{
+                width: '100%', padding: '13px 14px 13px 40px', borderRadius: 12,
+                border: `1.5px solid ${needsLocation && !location ? '#fbbf24' : '#e0dfd8'}`,
+                fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#0c0e1c',
+                background: '#fff', boxSizing: 'border-box', outline: 'none',
+                transition: 'border-color 0.2s',
+              }}
+            />
+          </div>
+
+          {needsLocation && location && (
+            <div style={{
+              marginTop: 8, display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 12px', background: '#f0effb', borderRadius: 10,
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: accent, fontWeight: 500 }}>
+                Searching within 100 miles of {location}
+              </span>
+            </div>
+          )}
+
+          {needsLocation && !location && (
+            <div style={{ marginTop: 6, fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#b45309' }}>
+              Add your location to find nearby {workMode?.toLowerCase()} roles
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ padding: '16px 20px 24px' }}>
+        <button
+          disabled={!canStart}
+          onClick={() => onStart({ workMode, location, useRadius: needsLocation && Boolean(location) })}
+          style={{
+            width: '100%', padding: 16, borderRadius: 14, border: 'none',
+            background: canStart ? accent : '#c0bfb8',
+            color: '#fff', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 15,
+            boxShadow: canStart ? `0 4px 16px ${accent}44` : 'none',
+            cursor: canStart ? 'pointer' : 'default', transition: 'all 0.2s',
+          }}
+        >
+          Start Search ✦
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── JobDetailSheet ────────────────────────────────────────────────────────────
+
 function JobDetailSheet({ job, onClose, onQueue, onSkip, accent }) {
   return (
     <div
@@ -31,6 +242,15 @@ function JobDetailSheet({ job, onClose, onQueue, onSkip, accent }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          {job.work_mode && (() => {
+            const modeStyles = {
+              'Remote':  { bg: '#f0fdf4', color: '#16a34a' },
+              'Hybrid':  { bg: '#f0effb', color: '#5047e5' },
+              'On-site': { bg: '#fff7ed', color: '#ea580c' },
+            }
+            const s = modeStyles[job.work_mode] || { bg: '#f6f5f0', color: '#6b6f7e' }
+            return <span style={{ background: s.bg, color: s.color, fontSize: 12, padding: '4px 10px', borderRadius: 20, fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>{job.work_mode}</span>
+          })()}
           {(job.tags || []).map((t) => (
             <span key={t} style={{ background: '#f0effb', color: '#5047e5', fontSize: 12, padding: '4px 10px', borderRadius: 20, fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>{t}</span>
           ))}
@@ -89,9 +309,12 @@ function BackCard({ offset }) {
   )
 }
 
+// ── Discover ──────────────────────────────────────────────────────────────────
+
 export default function Discover() {
-  const { jobs, loading, fetchJobs, scrapeJobs, tweaks, queueJob } = useAppStore()
+  const { jobs, loading, fetchJobs, scrapeJobs, tweaks, queueJob, discoverPrefs, setDiscoverPrefs } = useAppStore()
   const accent = tweaks.accentColor
+  const [showGate, setShowGate] = useState(!discoverPrefs?.workMode)
   const [stack, setStack] = useState([])
   const [rejected, setRejected] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('hm_rejected_ids')) || []) } catch { return new Set() }
@@ -105,7 +328,10 @@ export default function Discover() {
     setScraping(false)
   }
 
-  useEffect(() => { fetchJobs() }, [])
+  useEffect(() => {
+    if (!showGate) fetchJobs()
+  }, [showGate]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     setStack(jobs.map((j) => j.id).filter((id) => !rejected.has(id)))
   }, [jobs, rejected])
@@ -129,17 +355,48 @@ export default function Discover() {
     removeTop()
   }
 
+  const handleStartSearch = (prefs) => {
+    setDiscoverPrefs(prefs)
+    setShowGate(false)
+  }
+
+  if (showGate) {
+    return <WorkModeGate initialPrefs={discoverPrefs} accent={accent} onStart={handleStartSearch} />
+  }
+
   const visible = stack.slice(0, 3)
   const currentJob = jobs.find((j) => j.id === stack[0])
+
+  const workModeLabel = discoverPrefs?.workMode
+  const locationLabel = discoverPrefs?.location
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f5f4f0' }}>
       {/* Header */}
-      <div style={{ padding: '16px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ flex: 1 }}>
+      <div style={{ padding: '16px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 800, fontSize: 22, color: '#0c0e1c' }}>Discover</div>
           <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8' }}>{stack.length} jobs for you</div>
         </div>
+
+        {/* Preferences chip */}
+        <button
+          onClick={() => setShowGate(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px',
+            borderRadius: 20, border: '1.5px solid #e0dfd8', background: '#fff',
+            cursor: 'pointer', flexShrink: 0,
+          }}
+          title="Change preferences"
+        >
+          <IconSliders color={accent} />
+          {workModeLabel && (
+            <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11, color: accent }}>
+              {workModeLabel}{locationLabel ? ` · ${locationLabel.split(',')[0]}` : ''}
+            </span>
+          )}
+        </button>
+
         <button
           onClick={handleScrape}
           disabled={scraping || loading}
@@ -149,7 +406,7 @@ export default function Discover() {
             background: '#fff', cursor: scraping || loading ? 'default' : 'pointer',
             fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 12,
             color: scraping ? '#9a9fa8' : accent,
-            transition: 'all 0.2s',
+            transition: 'all 0.2s', flexShrink: 0,
           }}>
           {scraping ? 'Searching…' : '⟳ Real Jobs'}
         </button>
@@ -197,17 +454,14 @@ export default function Discover() {
 
         {!loading && stack.length > 0 && (
           <>
-            {/* Back cards */}
             {visible.slice(1).map((id, i) => (
               <BackCard key={id} offset={i + 1} />
             ))}
 
-            {/* Top draggable card */}
             <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
               {currentJob && <JobCard key={stack[0]} job={currentJob} onGone={removeTop} />}
             </div>
 
-            {/* View Details button overlaid on card */}
             <button
               onClick={() => setShowDetail(true)}
               style={{
