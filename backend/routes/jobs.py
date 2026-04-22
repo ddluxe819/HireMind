@@ -91,7 +91,7 @@ Return ONLY the JSON array."""
 
     response = _claude.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=2048,
+        max_tokens=4096,
         messages=[{"role": "user", "content": prompt}]
     )
 
@@ -149,8 +149,8 @@ def get_discover_feed(
             ]
             db.table("job_listings").upsert(rows).execute()
             return jobs
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[jobs/discover] Claude generation failed: {e}")
     return MOCK_JOBS
 
 
