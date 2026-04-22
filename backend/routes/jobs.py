@@ -63,15 +63,19 @@ MOCK_JOBS: List[JobListing] = [
 ]
 
 
-def _generate_jobs_with_claude(title: str, skills: Optional[str], experience: Optional[str]) -> List[JobListing]:
+def _generate_jobs_with_claude(title: str, skills: Optional[str], experience: Optional[str], exclude: Optional[str] = None) -> List[JobListing]:
     skills_list = [s.strip() for s in skills.split(",") if s.strip()] if skills else []
     skills_str = ", ".join(skills_list) if skills_list else "general"
     exp_str = experience or "several years of"
+    exclude_list = [c.strip() for c in exclude.split(",") if c.strip()] if exclude else []
+    exclude_clause = f"\nDo NOT use these companies (already shown): {', '.join(exclude_list)}." if exclude_list else ""
 
-    prompt = f"""Generate 5 realistic job listings for a candidate seeking a "{title}" role with {exp_str} experience. Key skills: {skills_str}.
+    prompt = f"""Generate 10 realistic job listings for a candidate seeking a "{title}" role with {exp_str} experience. Key skills: {skills_str}.{exclude_clause}
 
-Return a JSON array of exactly 5 objects with these fields:
-- company: well-known tech company name (string)
+Choose well-known companies across a wide variety of industries — do not limit to any one sector. Prioritize companies that genuinely hire for "{title}" roles. Vary company size, industry, and location to maximize the breadth of relevant opportunities.
+
+Return a JSON array of exactly 10 objects with these fields:
+- company: well-known company name appropriate for this role (string)
 - title: specific job title related to "{title}" (string)
 - location: "Remote" or "City, ST" (string)
 - salary_range: e.g. "$120k–$160k" (string)
@@ -120,11 +124,12 @@ def get_discover_feed(
     title: Optional[str] = Query(None),
     skills: Optional[str] = Query(None),
     experience: Optional[str] = Query(None),
+    exclude: Optional[str] = Query(None),
     db: Client = Depends(get_db),
 ):
     if title or skills:
         try:
-            jobs = _generate_jobs_with_claude(title or "", skills, experience)
+            jobs = _generate_jobs_with_claude(title or "", skills, experience, exclude)
             rows = [
                 {
                     "id": j.id,

@@ -93,7 +93,9 @@ export default function Discover() {
   const { jobs, loading, fetchJobs, scrapeJobs, tweaks, queueJob } = useAppStore()
   const accent = tweaks.accentColor
   const [stack, setStack] = useState([])
-  const [rejected, setRejected] = useState(new Set())
+  const [rejected, setRejected] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('hm_rejected_ids')) || []) } catch { return new Set() }
+  })
   const [showDetail, setShowDetail] = useState(false)
   const [scraping, setScraping] = useState(false)
 
@@ -106,7 +108,7 @@ export default function Discover() {
   useEffect(() => { fetchJobs() }, [])
   useEffect(() => {
     setStack(jobs.map((j) => j.id).filter((id) => !rejected.has(id)))
-  }, [jobs])
+  }, [jobs, rejected])
 
   const removeTop = () => setStack((s) => s.slice(1))
 
@@ -117,7 +119,13 @@ export default function Discover() {
 
   const handleSkip = () => {
     const topId = stack[0]
-    if (topId) setRejected((prev) => new Set([...prev, topId]))
+    if (topId) {
+      setRejected((prev) => {
+        const next = new Set([...prev, topId])
+        try { localStorage.setItem('hm_rejected_ids', JSON.stringify([...next].slice(-500))) } catch {}
+        return next
+      })
+    }
     removeTop()
   }
 

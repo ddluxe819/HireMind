@@ -5,6 +5,19 @@ const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api'
 const TWEAKS_KEY = 'hm_tweaks'
 const SCREEN_KEY = 'hm_screen'
 const PROFILE_KEY = 'hm_profile'
+const SEEN_JOBS_KEY = 'hm_seen_jobs'
+
+function loadSeenJobs() {
+  try { return new Set(JSON.parse(localStorage.getItem(SEEN_JOBS_KEY)) || []) } catch { return new Set() }
+}
+
+function saveSeenJobs(seen) {
+  try {
+    // Keep last 500 to avoid unbounded growth
+    const arr = [...seen].slice(-500)
+    localStorage.setItem(SEEN_JOBS_KEY, JSON.stringify(arr))
+  } catch {}
+}
 
 const DEFAULT_TWEAKS = { accentColor: '#5047e5', showMatchScore: true }
 
@@ -24,6 +37,7 @@ export const useAppStore = create((set, get) => ({
   screen: loadScreen(),
   tweaks: loadTweaks(),
   profile: loadProfile(),
+  seenJobs: loadSeenJobs(),
   jobs: [],
   applications: [],
   loading: false,
@@ -48,19 +62,34 @@ export const useAppStore = create((set, get) => ({
     set({ loading: true })
     try {
       const profile = get().profile
+      const seenJobs = get().seenJobs
       let url = `${API}/jobs/discover`
       if (profile) {
         const params = new URLSearchParams()
         if (profile.title) params.set('title', profile.title)
         if (profile.skills?.length) params.set('skills', profile.skills.join(','))
         if (profile.experience) params.set('experience', profile.experience)
+        // Pass seen companies so Claude avoids repeating them
+        if (seenJobs.size > 0) {
+          const seenArr = [...seenJobs]
+          // seenJobs stores "company::title" keys — extract unique companies
+          const companies = [...new Set(seenArr.map((k) => k.split('::')[0]))].slice(-20)
+          if (companies.length) params.set('exclude', companies.join(','))
+        }
         const qs = params.toString()
         if (qs) url += '?' + qs
       }
       const res = await fetch(url)
       if (!res.ok) throw new Error('API unavailable')
       const jobs = await res.json()
-      set({ jobs: jobs.length ? jobs : SAMPLE_JOBS })
+      // Filter out jobs we've already seen this session or before
+      const fresh = jobs.filter((j) => !seenJobs.has(`${j.company}::${j.title}`))
+      const result = fresh.length ? fresh : (jobs.length ? jobs : SAMPLE_JOBS)
+      // Mark these as seen
+      const updated = new Set(seenJobs)
+      result.forEach((j) => updated.add(`${j.company}::${j.title}`))
+      saveSeenJobs(updated)
+      set({ jobs: result, seenJobs: updated })
     } catch {
       set({ jobs: SAMPLE_JOBS })
     } finally {
@@ -173,7 +202,15 @@ export const useAppStore = create((set, get) => ({
       })
       if (!res.ok) throw new Error('Scrape failed')
       const jobs = await res.json()
-      if (jobs.length) set({ jobs })
+      if (jobs.length) {
+        const seenJobs = get().seenJobs
+        const fresh = jobs.filter((j) => !seenJobs.has(`${j.company}::${j.title}`))
+        const result = fresh.length ? fresh : jobs
+        const updated = new Set(seenJobs)
+        result.forEach((j) => updated.add(`${j.company}::${j.title}`))
+        saveSeenJobs(updated)
+        set({ jobs: result, seenJobs: updated })
+      }
     } catch {}
     set({ loading: false })
   },
