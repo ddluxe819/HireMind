@@ -14,6 +14,7 @@ class ResumeVariantOut(BaseModel):
     base_id: str
     job_id: str
     content: str
+    text_content: Optional[str] = None
     pdf_path: Optional[str] = None
     created_at: str
 

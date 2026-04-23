@@ -41,6 +41,9 @@ export default function Documents() {
   const appsWithVariants = applications.filter((a) => a.resume_variant_id)
   const appsWithCoverLetters = applications.filter((a) => a.cover_letter_id)
 
+  const [textDocs, setTextDocs] = useState({})
+  const [showingText, setShowingText] = useState({})
+
   const loadDoc = async (type, id) => {
     if (loadedDocs[id] !== undefined) return
     setLoading((prev) => ({ ...prev, [id]: true }))
@@ -52,6 +55,9 @@ export default function Documents() {
       const data = await res.json()
       setLoadedDocs((prev) => ({ ...prev, [id]: data.content }))
       setLocalEdits((prev) => ({ ...prev, [id]: data.content }))
+      if (data.text_content) {
+        setTextDocs((prev) => ({ ...prev, [id]: data.text_content }))
+      }
     } catch {
       setLoadedDocs((prev) => ({ ...prev, [id]: '' }))
     }
@@ -190,13 +196,27 @@ export default function Documents() {
                             onClick={() => setPreviewHtml(content)}
                             style={{ ...actionBtn(true), background: accent, color: '#fff' }}
                           >
-                            Preview Resume
+                            Preview
                           </button>
+                          <button
+                            onClick={() => setShowingText((prev) => ({ ...prev, [id]: !prev[id] }))}
+                            style={actionBtn(showingText[id])}
+                          >
+                            {showingText[id] ? 'Hide Text' : 'Text'}
+                          </button>
+                          {textDocs[id] && (
+                            <button
+                              onClick={() => downloadDoc(textDocs[id], `${slug}_resume.txt`)}
+                              style={actionBtn(false)}
+                            >
+                              ↓ .txt
+                            </button>
+                          )}
                           <button
                             onClick={() => downloadDoc(content, `${slug}_resume.html`)}
                             style={actionBtn(false)}
                           >
-                            ↓ HTML
+                            ↓ .html
                           </button>
                         </>
                       )}
@@ -222,9 +242,14 @@ export default function Documents() {
                   {content !== undefined && !isEditing && !htmlResume && (
                     <div style={{ ...bodyStyle, maxHeight: 180, overflowY: 'auto' }}>{content}</div>
                   )}
-                  {content !== undefined && !isEditing && htmlResume && (
+                  {content !== undefined && !isEditing && htmlResume && !showingText[id] && (
                     <div style={{ padding: '10px 14px', fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#9a9fa8' }}>
-                      Executive Signal template ready. Click <strong>Preview Resume</strong> to view and save as PDF.
+                      Executive Signal template ready. Click <strong>Preview</strong> to view and save as PDF, or <strong>Text</strong> for a plain-text version.
+                    </div>
+                  )}
+                  {content !== undefined && !isEditing && htmlResume && showingText[id] && (
+                    <div style={{ ...bodyStyle, maxHeight: 260, overflowY: 'auto' }}>
+                      {textDocs[id] || '(Text version not available — regenerate docs to create one.)'}
                     </div>
                   )}
                   {isEditing && (

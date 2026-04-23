@@ -97,7 +97,7 @@ def list_resume_bases(db: Client = Depends(get_db)):
 
 @router.post("/generate", status_code=201)
 def generate_documents(payload: GenerateDocsRequest, db: Client = Depends(get_db)):
-    from backend.services.resume_renderer import render_resume_html
+    from backend.services.resume_renderer import render_resume_html, render_resume_text
 
     base_result = db.table("resume_bases").select("*").eq("id", payload.resume_base_id).single().execute()
     if not base_result.data:
@@ -132,18 +132,18 @@ The JSON must have exactly these keys:
   "certifications": ["any certs/courses from resume"],
   "education": "School Name\\nCity, ST",
   "board": "Board: Org\\nCity, ST · Years",
-  "intro_paragraph": "2-3 sentence personal brand statement tailored to this role and company",
+  "intro_paragraph": "2 sentences max — personal brand statement tailored to this role",
   "framework_items": [
-    {{"num": "01", "title": "Strength Title", "body": "1-2 sentence description"}},
-    {{"num": "02", "title": "Strength Title", "body": "1-2 sentence description"}},
-    {{"num": "03", "title": "Strength Title", "body": "1-2 sentence description"}},
-    {{"num": "04", "title": "Strength Title", "body": "1-2 sentence description"}}
+    {{"num": "01", "title": "Short Title", "body": "One sentence, 15 words max."}},
+    {{"num": "02", "title": "Short Title", "body": "One sentence, 15 words max."}},
+    {{"num": "03", "title": "Short Title", "body": "One sentence, 15 words max."}},
+    {{"num": "04", "title": "Short Title", "body": "One sentence, 15 words max."}}
   ],
   "achievement_groups": [
     {{
       "title": "Category Name",
       "items": [
-        "Achievement with [[metric]] for key numbers (use [[double brackets]] to mark metrics that should be bold)"
+        "Achievement bullet under 20 words — use [[double brackets]] around key metrics so they render bold"
       ]
     }}
   ],
@@ -152,11 +152,13 @@ The JSON must have exactly these keys:
   ]
 }}
 
-Rules:
+CRITICAL one-page rules — the rendered resume must fit on a single letter-size page:
 - Extract all values from the base resume (do not invent contact details, companies, or dates)
-- Tailor intro_paragraph and framework_items to match the target role
-- Select 3-5 achievement_groups most relevant to this job, 3-5 bullets each
-- Use [[double brackets]] around key metrics/numbers in achievement items so they render bold
+- intro_paragraph: 2 sentences maximum
+- framework_items body: 1 sentence, 15 words maximum each
+- achievement_groups: exactly 3 groups most relevant to this job
+- Each group: exactly 3 bullet items, each under 20 words
+- Use [[double brackets]] around key metrics/numbers so they render bold
 - Return the board key only if the resume mentions board membership; otherwise omit it
 - Output ONLY: the raw JSON object, then the delimiter ---COVER_LETTER---, then the cover letter text"""
 
@@ -181,11 +183,13 @@ Rules:
         resume_data = {}
 
     resume_html = render_resume_html(resume_data, payload.title, payload.company)
+    resume_text = render_resume_text(resume_data, payload.title, payload.company)
 
     variant = db.table("resume_variants").insert({
         "base_id": payload.resume_base_id,
         "job_id": payload.job_id,
         "content": resume_html,
+        "text_content": resume_text,
     }).execute().data[0]
 
     cover_letter = db.table("cover_letters").insert({

@@ -1,4 +1,5 @@
 import html as _html
+import re
 
 
 def _e(s) -> str:
@@ -14,6 +15,24 @@ def _tag_items(items: list, highlighted: list) -> str:
     return "\n        ".join(parts)
 
 
+def _ach_html(raw: str) -> str:
+    """Convert [[metric]] markers to bold spans, then HTML-escape the rest."""
+    # Split on [[...]] to interleave escaped text and bold spans
+    parts = re.split(r'\[\[(.+?)\]\]', raw)
+    out = ""
+    for i, part in enumerate(parts):
+        if i % 2 == 0:
+            out += _e(part)
+        else:
+            out += f'<span class="m">{_e(part)}</span>'
+    return out
+
+
+def _strip_markers(raw: str) -> str:
+    """Strip [[...]] markers for plain-text output."""
+    return re.sub(r'\[\[(.+?)\]\]', r'\1', raw)
+
+
 RESUME_CSS = """\
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#0e0e0e; padding:48px 24px; font-family:'DM Sans',sans-serif; }
@@ -27,8 +46,8 @@ body { background:#0e0e0e; padding:48px 24px; font-family:'DM Sans',sans-serif; 
   html, body { background:#fff !important; padding:0 !important; margin:0 !important; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
   .print-btn { display:none !important; }
   .label { display:none !important; }
-  .wrap { max-width:100% !important; margin:0 !important; }
-  .resume { box-shadow:none !important; width:100% !important; min-height:100vh !important; }
+  .wrap { max-width:100% !important; margin:0 !important; padding:0 !important; overflow:hidden !important; }
+  .resume { box-shadow:none !important; width:816px !important; height:1056px !important; overflow:hidden !important; }
   .sb { background:#0D0F14 !important; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
   .sb-name { color:#fff !important; }
   .sb-role { color:#2A7F7F !important; }
@@ -45,42 +64,63 @@ body { background:#0e0e0e; padding:48px 24px; font-family:'DM Sans',sans-serif; 
   .exp-co { color:#2A7F7F !important; }
 }
 :root { --ac:#2A7F7F; --ac-dim:rgba(42,127,127,.3); --ac-faint:rgba(42,127,127,.12); }
-.resume { background:#fff; display:grid; grid-template-columns:232px 1fr; min-height:1080px; box-shadow:0 40px 100px rgba(0,0,0,.7); }
-.sb { background:#0D0F14; padding:44px 26px; display:flex; flex-direction:column; }
+.resume { background:#fff; display:grid; grid-template-columns:232px 1fr; min-height:1056px; box-shadow:0 40px 100px rgba(0,0,0,.7); }
+.sb { background:#0D0F14; padding:36px 24px; display:flex; flex-direction:column; }
 .sb-name { font-family:'Unbounded',sans-serif; font-size:19px; font-weight:700; line-height:1.4; letter-spacing:.02em; color:#fff; margin-bottom:6px; }
-.sb-role { font-family:'DM Sans',sans-serif; font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--ac); padding-bottom:24px; border-bottom:1px solid rgba(255,255,255,.07); margin-bottom:22px; }
-.sb-contact { font-size:10.5px; color:#777; line-height:1.95; margin-bottom:4px; }
-.sb-section { font-size:8px; letter-spacing:.2em; text-transform:uppercase; color:var(--ac); margin-top:24px; margin-bottom:10px; }
-.sb-comp { font-size:10.5px; color:#ccc; line-height:1.5; margin-bottom:5px; padding-left:9px; border-left:2px solid var(--ac-dim); }
+.sb-role { font-family:'DM Sans',sans-serif; font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--ac); padding-bottom:18px; border-bottom:1px solid rgba(255,255,255,.07); margin-bottom:18px; }
+.sb-contact { font-size:10px; color:#777; line-height:1.85; margin-bottom:4px; }
+.sb-section { font-size:8px; letter-spacing:.2em; text-transform:uppercase; color:var(--ac); margin-top:18px; margin-bottom:8px; }
+.sb-comp { font-size:10px; color:#ccc; line-height:1.45; margin-bottom:4px; padding-left:9px; border-left:2px solid var(--ac-dim); }
 .sb-tags { display:flex; flex-wrap:wrap; gap:3px; margin-top:2px; }
-.sb-tag { font-size:8.5px; color:#555; border:1px solid #1e2028; padding:3px 6px; line-height:1.4; }
+.sb-tag { font-size:8px; color:#555; border:1px solid #1e2028; padding:2px 5px; line-height:1.4; }
 .sb-tag.hi { border-color:var(--ac-dim); color:var(--ac); }
-.main { padding:44px 42px; background:#fff; color:#111; }
-.section { margin-bottom:30px; }
-.stitle { font-size:8px; letter-spacing:.22em; text-transform:uppercase; color:#bbb; display:inline-block; padding-bottom:8px; border-bottom:2px solid var(--ac); margin-bottom:16px; }
-.fw-box { background:#F9FAFA; border-left:3px solid var(--ac); padding:16px 18px; }
-.fw-intro { font-size:12px; line-height:1.75; color:#444; margin-bottom:16px; }
-.fw-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.main { padding:36px 38px; background:#fff; color:#111; }
+.section { margin-bottom:22px; }
+.stitle { font-size:8px; letter-spacing:.22em; text-transform:uppercase; color:#bbb; display:inline-block; padding-bottom:6px; border-bottom:2px solid var(--ac); margin-bottom:12px; }
+.fw-box { background:#F9FAFA; border-left:3px solid var(--ac); padding:13px 16px; }
+.fw-intro { font-size:11.5px; line-height:1.7; color:#444; margin-bottom:12px; }
+.fw-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .fw-num { font-family:'DM Mono',monospace; font-size:8px; color:var(--ac); margin-bottom:2px; }
 .fw-title { font-size:10px; font-weight:600; color:#111; margin-bottom:2px; }
-.fw-body { font-size:10px; color:#888; line-height:1.6; }
-.ach-group { margin-bottom:16px; }
-.ach-group-title { font-size:8.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ac); margin-bottom:7px; }
-.ach { font-size:11.5px; color:#444; line-height:1.65; margin-bottom:4px; padding-left:14px; position:relative; }
+.fw-body { font-size:9.5px; color:#888; line-height:1.55; }
+.ach-group { margin-bottom:12px; }
+.ach-group-title { font-size:8px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ac); margin-bottom:6px; }
+.ach { font-size:11px; color:#444; line-height:1.6; margin-bottom:3px; padding-left:13px; position:relative; }
 .ach::before { content:''; position:absolute; left:0; top:8px; width:6px; height:1px; background:var(--ac); }
 .m { color:#111; font-weight:600; }
-.exp-item { display:grid; grid-template-columns:1fr auto; gap:8px; padding:11px 0; border-bottom:1px solid #f2f2f2; }
+.exp-item { display:grid; grid-template-columns:1fr auto; gap:8px; padding:9px 0; border-bottom:1px solid #f2f2f2; }
 .exp-item:last-child { border-bottom:none; }
-.exp-title { font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; color:#111; margin-bottom:2px; }
+.exp-title { font-family:'DM Sans',sans-serif; font-size:12.5px; font-weight:600; color:#111; margin-bottom:2px; }
 .exp-co { font-size:10px; color:var(--ac); font-weight:500; }
-.exp-date { font-size:9.5px; color:#bbb; text-align:right; padding-top:2px; white-space:nowrap; }
+.exp-date { font-size:9px; color:#bbb; text-align:right; padding-top:2px; white-space:nowrap; }
 """
 
-
-def _ach_text(raw: str) -> str:
-    """Convert [[metric]] markers to <span class="m"> for bold metrics."""
-    import re
-    return re.sub(r'\[\[(.+?)\]\]', r'<span class="m">\1</span>', _e(raw))
+# JS block that scales the resume down if it's taller than one letter page (1056px at 96dpi)
+_SCALE_JS = """\
+<script>
+(function(){
+  var LIMIT = 1056;
+  function fit(){
+    var r = document.querySelector('.resume');
+    if (!r) return;
+    var h = r.scrollHeight;
+    if (h > LIMIT) {
+      var s = LIMIT / h;
+      r.style.transform = 'scale(' + s + ')';
+      r.style.transformOrigin = 'top left';
+      r.style.width = Math.round(100 / s) + '%';
+      var w = document.querySelector('.wrap');
+      if (w) { w.style.overflow = 'hidden'; w.style.height = LIMIT + 'px'; }
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fit);
+  } else {
+    fit();
+  }
+  window.addEventListener('beforeprint', fit);
+})();
+</script>"""
 
 
 def render_resume_html(d: dict, job_title: str, company: str) -> str:
@@ -110,7 +150,7 @@ def render_resume_html(d: dict, job_title: str, company: str) -> str:
     ach_groups_html = ""
     for grp in (d.get("achievement_groups") or []):
         items_html = "\n".join(
-            f'        <div class="ach">{_ach_text(item)}</div>'
+            f'        <div class="ach">{_ach_html(item)}</div>'
             for item in (grp.get("items") or [])
         )
         ach_groups_html += (
@@ -134,7 +174,7 @@ def render_resume_html(d: dict, job_title: str, company: str) -> str:
 
     education_html = _e(d.get("education", "")).replace("\n", "<br>")
     board_html = _e(d.get("board", "")).replace("\n", "<br>") if d.get("board") else ""
-    board_block = f'<div class="sb-contact" style="margin-top:10px;">{board_html}</div>' if board_html else ""
+    board_block = f'<div class="sb-contact" style="margin-top:8px;">{board_html}</div>' if board_html else ""
 
     page_title = f"{_e(d.get('name', 'Resume'))} — {_e(job_title)} at {_e(company)}"
     label_text = f"Executive Signal · Deep Teal — {_e(job_title)} at {_e(company)}"
@@ -179,7 +219,7 @@ def render_resume_html(d: dict, job_title: str, company: str) -> str:
 
       <div class="sb-section">Education</div>
       <div class="sb-contact">{education_html}</div>
-      <div class="sb-tags" style="margin-top:8px;">
+      <div class="sb-tags" style="margin-top:6px;">
         {cert_tags}
       </div>
       {board_block}
@@ -208,5 +248,62 @@ def render_resume_html(d: dict, job_title: str, company: str) -> str:
 
   </div>
 </div>
+{_SCALE_JS}
 </body>
 </html>"""
+
+
+def render_resume_text(d: dict, job_title: str, company: str) -> str:
+    """Generate a clean plain-text version of the resume from the same JSON data."""
+    lines = []
+
+    name = d.get("name", "")
+    lines += [name, d.get("tagline", ""), ""]
+    lines += [
+        d.get("location", ""),
+        d.get("phone", ""),
+        d.get("email", ""),
+        d.get("linkedin", ""),
+        "",
+    ]
+
+    lines += ["CORE COMPETENCIES"]
+    for c in (d.get("competencies") or []):
+        lines.append(f"  {c}")
+    lines.append("")
+
+    tech = " · ".join(d.get("tech_stack") or [])
+    lines += ["MARTECH STACK", f"  {tech}", ""]
+
+    ai = " · ".join(d.get("ai_tools") or [])
+    lines += ["AI & AUTOMATION", f"  {ai}", ""]
+
+    lines += ["THE WORK I DO", d.get("intro_paragraph", ""), ""]
+    for item in (d.get("framework_items") or []):
+        lines.append(item.get("title", ""))
+        lines.append(f"  {item.get('body', '')}")
+    lines.append("")
+
+    lines.append("SELECTED ACHIEVEMENTS")
+    for grp in (d.get("achievement_groups") or []):
+        lines.append(grp.get("title", "").upper())
+        for item in (grp.get("items") or []):
+            lines.append(f"  – {_strip_markers(item)}")
+        lines.append("")
+
+    lines.append("EXPERIENCE")
+    for exp in (d.get("experience") or []):
+        lines.append(f"{exp.get('title', '')}  {exp.get('dates', '')}")
+        lines.append(f"  {exp.get('company', '')}")
+    lines.append("")
+
+    edu = d.get("education", "").replace("\n", ", ")
+    lines.append(f"EDUCATION: {edu}")
+    for cert in (d.get("certifications") or []):
+        lines.append(f"  {cert}")
+    if d.get("board"):
+        lines.append(f"  {d.get('board', '').replace(chr(10), ', ')}")
+
+    # Add tailored-for header at the top
+    header = f"Resume — {name}\nTailored for: {job_title} at {company}\n{'=' * 60}\n"
+    return header + "\n".join(lines)
