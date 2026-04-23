@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../store/appStore'
+import ResumePreviewModal from '../components/ResumePreviewModal'
 
 const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api'
 
@@ -8,6 +9,7 @@ export default function Documents() {
   const accent = tweaks.accentColor
 
   const [tab, setTab] = useState('resume')
+  const [previewHtml, setPreviewHtml] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [localEdits, setLocalEdits] = useState({})
   const [loadedDocs, setLoadedDocs] = useState({})
@@ -101,6 +103,8 @@ export default function Documents() {
     fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11,
   })
 
+  const isHtml = (content) => typeof content === 'string' && content.trimStart().startsWith('<!DOCTYPE')
+
   const emptyState = (msg) => (
     <div style={{ textAlign: 'center', padding: '40px 20px' }}>
       <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
@@ -110,6 +114,7 @@ export default function Documents() {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f5f4f0' }}>
+      {previewHtml && <ResumePreviewModal htmlContent={previewHtml} onClose={() => setPreviewHtml(null)} />}
       <div style={{ padding: '16px 20px 0' }}>
         <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 800, fontSize: 22, color: '#0c0e1c', marginBottom: 14 }}>Documents</div>
         <div style={{ display: 'flex', background: '#fff', borderRadius: 14, padding: 4, marginBottom: 16, boxShadow: '0 2px 10px rgba(12,14,28,0.06)' }}>
@@ -166,6 +171,8 @@ export default function Documents() {
               const id = app.resume_variant_id
               const isEditing = editingId === id
               const content = loadedDocs[id]
+              const htmlResume = content !== undefined && isHtml(content)
+              const slug = app.company.toLowerCase().replace(/\s+/g, '_')
               return (
                 <div key={id} style={cardStyle}>
                   <div style={headerStyle}>
@@ -177,9 +184,25 @@ export default function Documents() {
                       {content === undefined && !loading[id] && (
                         <button onClick={() => loadDoc('variant', id)} style={actionBtn(true)}>View</button>
                       )}
-                      {content !== undefined && !isEditing && (
+                      {content !== undefined && !isEditing && htmlResume && (
                         <>
-                          <button onClick={() => downloadDoc(content, `${app.company.toLowerCase().replace(/\s+/g, '_')}_resume.txt`)} style={actionBtn(true)}>↓</button>
+                          <button
+                            onClick={() => setPreviewHtml(content)}
+                            style={{ ...actionBtn(true), background: accent, color: '#fff' }}
+                          >
+                            Preview Resume
+                          </button>
+                          <button
+                            onClick={() => downloadDoc(content, `${slug}_resume.html`)}
+                            style={actionBtn(false)}
+                          >
+                            ↓ HTML
+                          </button>
+                        </>
+                      )}
+                      {content !== undefined && !isEditing && !htmlResume && (
+                        <>
+                          <button onClick={() => downloadDoc(content, `${slug}_resume.txt`)} style={actionBtn(true)}>↓</button>
                           <button onClick={() => setEditingId(id)} style={actionBtn(false)}>Edit</button>
                         </>
                       )}
@@ -196,8 +219,13 @@ export default function Documents() {
                   {loading[id] && (
                     <div style={{ padding: '14px', fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8' }}>Loading…</div>
                   )}
-                  {content !== undefined && !isEditing && (
+                  {content !== undefined && !isEditing && !htmlResume && (
                     <div style={{ ...bodyStyle, maxHeight: 180, overflowY: 'auto' }}>{content}</div>
+                  )}
+                  {content !== undefined && !isEditing && htmlResume && (
+                    <div style={{ padding: '10px 14px', fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#9a9fa8' }}>
+                      Executive Signal template ready. Click <strong>Preview Resume</strong> to view and save as PDF.
+                    </div>
                   )}
                   {isEditing && (
                     <textarea

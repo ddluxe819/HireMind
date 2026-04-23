@@ -97,27 +97,68 @@ def list_resume_bases(db: Client = Depends(get_db)):
 
 @router.post("/generate", status_code=201)
 def generate_documents(payload: GenerateDocsRequest, db: Client = Depends(get_db)):
+    from backend.services.resume_renderer import render_resume_html
+
     base_result = db.table("resume_bases").select("*").eq("id", payload.resume_base_id).single().execute()
     if not base_result.data:
         raise HTTPException(status_code=404, detail="Resume base not found")
     base = base_result.data
 
-    prompt = f"""You are a professional resume and cover letter writer.
+    prompt = f"""You are a professional resume designer. Given the base resume and job description below, output two sections separated by ---COVER_LETTER---.
+
+Section 1: A JSON object (no markdown fences) representing a tailored resume for this role.
+Section 2: A 3-paragraph cover letter in plain text.
 
 Job: {payload.title} at {payload.company}
-Job Description: {payload.job_description}
+Job Description:
+{payload.job_description[:3000]}
 
 Base Resume:
-{base['content']}
+{base['content'][:4000]}
 
-Generate two outputs separated by the delimiter ---COVER_LETTER---:
-1. A tailored resume variant (keep same format, optimize keywords for this role)
-2. A compelling cover letter (3 paragraphs, professional tone)
+The JSON must have exactly these keys:
+{{
+  "name": "First Last",
+  "tagline": "Role · Specialty · Specialty",
+  "location": "City, ST",
+  "phone": "000.000.0000",
+  "email": "email@example.com",
+  "linkedin": "linkedin.com/in/handle",
+  "competencies": ["list of all core competencies from the resume"],
+  "tech_stack": ["all martech/tools listed in resume"],
+  "highlighted_tech": ["3-5 tools most relevant to THIS job"],
+  "ai_tools": ["all AI/automation tools from resume"],
+  "highlighted_ai": ["2-3 AI tools most relevant to THIS job"],
+  "certifications": ["any certs/courses from resume"],
+  "education": "School Name\\nCity, ST",
+  "board": "Board: Org\\nCity, ST · Years",
+  "intro_paragraph": "2-3 sentence personal brand statement tailored to this role and company",
+  "framework_items": [
+    {{"num": "01", "title": "Strength Title", "body": "1-2 sentence description"}},
+    {{"num": "02", "title": "Strength Title", "body": "1-2 sentence description"}},
+    {{"num": "03", "title": "Strength Title", "body": "1-2 sentence description"}},
+    {{"num": "04", "title": "Strength Title", "body": "1-2 sentence description"}}
+  ],
+  "achievement_groups": [
+    {{
+      "title": "Category Name",
+      "items": [
+        "Achievement with [[metric]] for key numbers (use [[double brackets]] to mark metrics that should be bold)"
+      ]
+    }}
+  ],
+  "experience": [
+    {{"title": "Job Title", "company": "Company Name", "dates": "YYYY–YYYY"}}
+  ]
+}}
 
-Format:
-[tailored resume content]
----COVER_LETTER---
-[cover letter content]"""
+Rules:
+- Extract all values from the base resume (do not invent contact details, companies, or dates)
+- Tailor intro_paragraph and framework_items to match the target role
+- Select 3-5 achievement_groups most relevant to this job, 3-5 bullets each
+- Use [[double brackets]] around key metrics/numbers in achievement items so they render bold
+- Return the board key only if the resume mentions board membership; otherwise omit it
+- Output ONLY: the raw JSON object, then the delimiter ---COVER_LETTER---, then the cover letter text"""
 
     response = _claude.messages.create(
         model="claude-sonnet-4-6",
@@ -125,15 +166,26 @@ Format:
         messages=[{"role": "user", "content": prompt}]
     )
 
-    raw = response.content[0].text
+    raw = response.content[0].text.strip()
     parts = raw.split("---COVER_LETTER---")
-    resume_content = parts[0].strip()
+    json_part = parts[0].strip()
     cl_content = parts[1].strip() if len(parts) > 1 else ""
+
+    # Strip any accidental code fences
+    if json_part.startswith("```"):
+        json_part = json_part.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+
+    try:
+        resume_data = json.loads(json_part)
+    except Exception:
+        resume_data = {}
+
+    resume_html = render_resume_html(resume_data, payload.title, payload.company)
 
     variant = db.table("resume_variants").insert({
         "base_id": payload.resume_base_id,
         "job_id": payload.job_id,
-        "content": resume_content,
+        "content": resume_html,
     }).execute().data[0]
 
     cover_letter = db.table("cover_letters").insert({

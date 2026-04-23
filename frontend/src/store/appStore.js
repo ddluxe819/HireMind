@@ -106,11 +106,10 @@ export const useAppStore = create((set, get) => ({
       if (!res.ok) throw new Error('API unavailable')
       const jobs = await res.json()
       const fresh = jobs.filter((j) => !seenJobs.has(`${j.company}::${j.title}`))
-      const result = fresh.length ? fresh : jobs
       const updated = new Set(seenJobs)
-      result.forEach((j) => updated.add(`${j.company}::${j.title}`))
+      fresh.forEach((j) => updated.add(`${j.company}::${j.title}`))
       saveSeenJobs(updated)
-      set({ jobs: result, seenJobs: updated })
+      set({ jobs: fresh, seenJobs: updated })
     } catch {
       set({ jobs: [] })
     } finally {
