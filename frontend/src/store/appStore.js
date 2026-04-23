@@ -105,10 +105,8 @@ export const useAppStore = create((set, get) => ({
       const res = await fetch(url)
       if (!res.ok) throw new Error('API unavailable')
       const jobs = await res.json()
-      // Filter out jobs we've already seen this session or before
       const fresh = jobs.filter((j) => !seenJobs.has(`${j.company}::${j.title}`))
       const result = fresh.length ? fresh : jobs
-      // Mark these as seen
       const updated = new Set(seenJobs)
       result.forEach((j) => updated.add(`${j.company}::${j.title}`))
       saveSeenJobs(updated)

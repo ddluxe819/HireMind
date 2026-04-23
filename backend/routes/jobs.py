@@ -177,6 +177,10 @@ def get_discover_feed(
     try:
         effective_title = title or "Professional"
         jobs = _generate_jobs_with_claude(effective_title, skills, experience, exclude, location, work_mode, radius or 0)
+    except Exception as e:
+        print(f"[jobs/discover] Claude generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Job generation failed: {e}")
+    try:
         rows = [
             {
                 "id": j.id,
@@ -196,10 +200,9 @@ def get_discover_feed(
             for j in jobs
         ]
         db.table("job_listings").upsert(rows).execute()
-        return jobs
     except Exception as e:
-        print(f"[jobs/discover] Claude generation failed: {e}")
-        return []
+        print(f"[jobs/discover] DB upsert failed (non-fatal): {e}")
+    return jobs
 
 
 @router.post("/scrape", response_model=List[JobListing])
@@ -211,18 +214,21 @@ def scrape_jobs(payload: ScrapeRequest, db: Client = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Scrape failed: {e}")
     if not jobs:
         raise HTTPException(status_code=404, detail="No jobs found from any source")
-    rows = [
-        {
-            "id": j.id, "company": j.company, "title": j.title,
-            "location": j.location, "work_mode": j.work_mode,
-            "salary_range": j.salary_range,
-            "job_type": j.job_type, "description": j.description,
-            "apply_url": j.apply_url, "platform": j.platform,
-            "match_score": j.match_score, "tags": j.tags, "posted_at": j.posted_at,
-        }
-        for j in jobs
-    ]
-    db.table("job_listings").upsert(rows).execute()
+    try:
+        rows = [
+            {
+                "id": j.id, "company": j.company, "title": j.title,
+                "location": j.location, "work_mode": j.work_mode,
+                "salary_range": j.salary_range,
+                "job_type": j.job_type, "description": j.description,
+                "apply_url": j.apply_url, "platform": j.platform,
+                "match_score": j.match_score, "tags": j.tags, "posted_at": j.posted_at,
+            }
+            for j in jobs
+        ]
+        db.table("job_listings").upsert(rows).execute()
+    except Exception as e:
+        print(f"[jobs/scrape] DB upsert failed (non-fatal): {e}")
     return jobs
 
 
