@@ -3,6 +3,8 @@ HireMind job scraper — aggregates results from all active sources:
   • Adzuna       (general job board, strong US coverage)
   • USAJOBS      (US federal government jobs)
   • Jooble       (international aggregator)
+  • Greenhouse   (ATS board — curated list of companies, no auth)
+  • Lever        (ATS board — curated list of companies, no auth)
   • Firecrawl    (fallback web scrape for ATS-direct URLs)
 
 Results are deduplicated by (company + title) and returned as a unified list
@@ -10,7 +12,7 @@ compatible with the /api/jobs/discover feed format.
 
 Usage:
   python tools/job_scraper.py "product designer" --location "remote" --limit 20
-  python tools/job_scraper.py "software engineer" --sources adzuna jooble
+  python tools/job_scraper.py "software engineer" --sources adzuna greenhouse lever
   python tools/job_scraper.py "analyst" --sources usajobs --location "Washington DC"
 """
 import os
@@ -79,6 +81,24 @@ def _fetch_jooble(query: str, location: str, limit: int) -> list[dict]:
         return []
 
 
+def _fetch_greenhouse(query: str, location: str, limit: int) -> list[dict]:
+    try:
+        from job_sources.greenhouse import search
+        return search(query, location=location, results_per_page=min(limit, 150))
+    except Exception as e:
+        print(f"  [greenhouse] error — {e}")
+        return []
+
+
+def _fetch_lever(query: str, location: str, limit: int) -> list[dict]:
+    try:
+        from job_sources.lever import search
+        return search(query, location=location, results_per_page=min(limit, 150))
+    except Exception as e:
+        print(f"  [lever] error — {e}")
+        return []
+
+
 def _fetch_firecrawl(query: str, location: str, limit: int) -> list[dict]:
     import httpx
     api_key = os.environ.get("FIRECRAWL_API_KEY", "")
@@ -124,6 +144,8 @@ SOURCE_MAP = {
     "adzuna": _fetch_adzuna,
     "usajobs": _fetch_usajobs,
     "jooble": _fetch_jooble,
+    "greenhouse": _fetch_greenhouse,
+    "lever": _fetch_lever,
     "firecrawl": _fetch_firecrawl,
 }
 
@@ -133,14 +155,15 @@ ALL_SOURCES = list(SOURCE_MAP.keys())
 def aggregate(
     query: str,
     location: str = "",
-    limit: int = 50,
+    limit: int = 100,
     sources: list[str] | None = None,
 ) -> list[dict]:
     active = sources or ALL_SOURCES
     print(f"[job_scraper] Query: '{query}' | Location: '{location or 'any'}' | Sources: {', '.join(active)}")
 
-    # Fetch more per source than needed so dedup still yields `limit` results.
-    fetch_per_source = max(limit, limit * 2 // len(active))
+    # Over-fetch from every source so dedup still yields `limit` results.
+    # Each source is capped internally (Adzuna: 50, Jooble: 20, Greenhouse/Lever: 150).
+    fetch_per_source = max(limit, 50)
     raw: list[dict] = []
     with ThreadPoolExecutor(max_workers=len(active)) as pool:
         futures = {

@@ -5,7 +5,7 @@ import MatchRing from './MatchRing'
 
 const SWIPE_THRESHOLD = 80
 
-export default function JobCard({ job, onGone }) {
+export default function JobCard({ job, onGone, onSkip }) {
   const { tweaks, queueJob } = useAppStore()
   const accent = tweaks.accentColor
   const showMatch = tweaks.showMatchScore
@@ -21,8 +21,12 @@ export default function JobCard({ job, onGone }) {
     if (gone) {
       const dir = dx > 0 ? 1 : -1
       api.start({ x: dir * 600, rotate: dir * 20, config: { friction: 40 } })
-      if (dir === 1) queueJob(job)
-      setTimeout(onGone, 320)
+      if (dir === 1) {
+        queueJob(job)
+        setTimeout(onGone, 320)
+      } else {
+        setTimeout(() => onSkip ? onSkip(job.id) : onGone(), 320)
+      }
     } else {
       api.start({ x: active ? mx : 0, rotate: active ? mx * 0.07 : 0 })
     }

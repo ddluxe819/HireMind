@@ -11,7 +11,7 @@ from job_scraper import aggregate as _aggregate  # noqa: E402
 from backend.models.job import JobListing
 
 
-def scrape(query: str, location: str = "", limit: int = 15) -> List[JobListing]:
+def scrape(query: str, location: str = "", limit: int = 50) -> List[JobListing]:
     raw = _aggregate(query, location=location, limit=limit)
     jobs = []
     for r in raw:

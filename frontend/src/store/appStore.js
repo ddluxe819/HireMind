@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { SAMPLE_JOBS } from '../data/sampleData'
 
 const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api'
 const TWEAKS_KEY = 'hm_tweaks'
@@ -108,14 +107,14 @@ export const useAppStore = create((set, get) => ({
       const jobs = await res.json()
       // Filter out jobs we've already seen this session or before
       const fresh = jobs.filter((j) => !seenJobs.has(`${j.company}::${j.title}`))
-      const result = fresh.length ? fresh : (jobs.length ? jobs : SAMPLE_JOBS)
+      const result = fresh.length ? fresh : jobs
       // Mark these as seen
       const updated = new Set(seenJobs)
       result.forEach((j) => updated.add(`${j.company}::${j.title}`))
       saveSeenJobs(updated)
       set({ jobs: result, seenJobs: updated })
     } catch {
-      set({ jobs: SAMPLE_JOBS })
+      set({ jobs: [] })
     } finally {
       set({ loading: false })
     }
@@ -223,7 +222,7 @@ export const useAppStore = create((set, get) => ({
         body: JSON.stringify({
           title: profile.title,
           location,
-          limit: 15,
+          limit: 50,
         }),
       })
       if (!res.ok) throw new Error('Scrape failed')

@@ -17,7 +17,7 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 class ScrapeRequest(BaseModel):
     title: str
     location: str = ""
-    limit: int = 15
+    limit: int = 50
 
 _claude = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -68,6 +68,8 @@ _BATCH_FOCUSES = [
     "large, well-known enterprise and Fortune 500 companies",
     "mid-size, growth-stage, and established regional companies",
     "startups, agencies, consultancies, and innovative smaller companies",
+    "international and remote-first companies, distributed teams, and global tech organizations",
+    "companies in emerging sectors: climate tech, health tech, edtech, fintech, and developer tools",
 ]
 
 def _generate_batch(title: str, skills_str: str, exp_str: str, exclude_clause: str, focus: str, location_hint: str = "", work_mode_pref: str = "", radius: int = 0) -> List[JobListing]:
@@ -140,7 +142,7 @@ def _generate_jobs_with_claude(title: str, skills: Optional[str], experience: Op
     results: List[JobListing] = []
     seen_keys: set = set()
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         futures = {
             executor.submit(_generate_batch, title, skills_str, exp_str, exclude_clause, focus, location or "", work_mode or "", radius): focus
             for focus in _BATCH_FOCUSES
@@ -170,33 +172,34 @@ def get_discover_feed(
     radius: Optional[int] = Query(None),
     db: Client = Depends(get_db),
 ):
-    if title or skills or work_mode or location:
-        try:
-            effective_title = title or "Professional"
-            jobs = _generate_jobs_with_claude(effective_title, skills, experience, exclude, location, work_mode, radius or 0)
-            rows = [
-                {
-                    "id": j.id,
-                    "company": j.company,
-                    "title": j.title,
-                    "location": j.location,
-                    "work_mode": j.work_mode,
-                    "salary_range": j.salary_range,
-                    "job_type": j.job_type,
-                    "description": j.description,
-                    "apply_url": j.apply_url,
-                    "platform": j.platform,
-                    "match_score": j.match_score,
-                    "tags": j.tags,
-                    "posted_at": j.posted_at,
-                }
-                for j in jobs
-            ]
-            db.table("job_listings").upsert(rows).execute()
-            return jobs
-        except Exception as e:
-            print(f"[jobs/discover] Claude generation failed: {e}")
-    return MOCK_JOBS
+    if not (title or skills or work_mode or location):
+        return []
+    try:
+        effective_title = title or "Professional"
+        jobs = _generate_jobs_with_claude(effective_title, skills, experience, exclude, location, work_mode, radius or 0)
+        rows = [
+            {
+                "id": j.id,
+                "company": j.company,
+                "title": j.title,
+                "location": j.location,
+                "work_mode": j.work_mode,
+                "salary_range": j.salary_range,
+                "job_type": j.job_type,
+                "description": j.description,
+                "apply_url": j.apply_url,
+                "platform": j.platform,
+                "match_score": j.match_score,
+                "tags": j.tags,
+                "posted_at": j.posted_at,
+            }
+            for j in jobs
+        ]
+        db.table("job_listings").upsert(rows).execute()
+        return jobs
+    except Exception as e:
+        print(f"[jobs/discover] Claude generation failed: {e}")
+        return []
 
 
 @router.post("/scrape", response_model=List[JobListing])

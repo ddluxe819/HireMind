@@ -304,8 +304,8 @@ export default function Discover() {
     if (top) { queueJob(top); removeTop() }
   }
 
-  const handleSkip = () => {
-    const topId = stack[0]
+  const handleSkip = (jobId) => {
+    const topId = jobId ?? stack[0]
     if (topId) {
       setRejected((prev) => {
         const next = new Set([...prev, topId])
@@ -420,7 +420,7 @@ export default function Discover() {
             ))}
 
             <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-              {currentJob && <JobCard key={stack[0]} job={currentJob} onGone={removeTop} />}
+              {currentJob && <JobCard key={stack[0]} job={currentJob} onGone={removeTop} onSkip={handleSkip} />}
             </div>
 
             <button
