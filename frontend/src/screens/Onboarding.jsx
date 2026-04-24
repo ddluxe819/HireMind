@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { useAppStore } from '../store/appStore'
+import { US_CITIES } from '../data/locations'
 
 const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api'
 
@@ -34,6 +36,7 @@ const gridBtn = (active) => ({
 })
 
 export default function Onboarding({ onComplete }) {
+  const { discoverPrefs, setDiscoverPrefs } = useAppStore()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
     name: '', title: '', location: '', email: '', phone: '',
@@ -143,7 +146,6 @@ export default function Onboarding({ onComplete }) {
             {[
               ['Full Name', 'name', 'Alex Johnson'],
               ['Job Title', 'title', 'Product Designer'],
-              ['Location', 'location', 'San Francisco, CA'],
               ['Email', 'email', 'you@example.com'],
               ['Phone', 'phone', '+1 415 555 0100'],
             ].map(([label, key, ph]) => (
@@ -157,6 +159,39 @@ export default function Onboarding({ onComplete }) {
                 />
               </div>
             ))}
+
+            {/* Location — dropdown, syncs to discover prefs */}
+            <div>
+              <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 13, color: '#0c0e1c', marginBottom: 6 }}>Location</div>
+              <div style={{ position: 'relative' }}>
+                <select
+                  value={form.location}
+                  onChange={(e) => {
+                    const loc = e.target.value
+                    setForm((f) => ({ ...f, location: loc }))
+                    setDiscoverPrefs({ ...discoverPrefs, location: loc })
+                  }}
+                  style={{
+                    width: '100%', padding: '13px 40px 13px 14px', borderRadius: 12,
+                    border: `1.5px solid ${form.location ? accent : '#e0dfd8'}`,
+                    fontFamily: 'DM Sans, sans-serif', fontSize: 14,
+                    color: form.location ? '#0c0e1c' : '#9a9fa8',
+                    background: '#fff', boxSizing: 'border-box',
+                    appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer', outline: 'none',
+                  }}
+                >
+                  <option value="">Select your city…</option>
+                  {US_CITIES.map((city) => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
+                <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9a9fa8' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
