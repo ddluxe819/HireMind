@@ -6,6 +6,8 @@ class ResumeBaseOut(BaseModel):
     id: str
     name: str
     content: str
+    file_type: Optional[str] = None
+    storage_path: Optional[str] = None
     created_at: str
 
 

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../store/appStore'
-import ResumePreviewModal from '../components/ResumePreviewModal'
 
 const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api'
 
@@ -9,12 +8,12 @@ export default function Documents() {
   const accent = tweaks.accentColor
 
   const [tab, setTab] = useState('resume')
-  const [previewHtml, setPreviewHtml] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [localEdits, setLocalEdits] = useState({})
   const [loadedDocs, setLoadedDocs] = useState({})
   const [loading, setLoading] = useState({})
   const [saving, setSaving] = useState(null)
+  const [showingText, setShowingText] = useState({})
   const [baseContent, setBaseContent] = useState(profile?.resume_text || '')
   const [editingBase, setEditingBase] = useState(false)
 
@@ -26,7 +25,7 @@ export default function Documents() {
     setBaseContent(profile?.resume_text || '')
   }, [profile?.resume_text])
 
-  const downloadDoc = (content, filename) => {
+  const downloadText = (content, filename) => {
     const blob = new Blob([content], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -38,11 +37,12 @@ export default function Documents() {
     URL.revokeObjectURL(url)
   }
 
+  const openDownload = (url) => {
+    window.open(url, '_blank')
+  }
+
   const appsWithVariants = applications.filter((a) => a.resume_variant_id)
   const appsWithCoverLetters = applications.filter((a) => a.cover_letter_id)
-
-  const [textDocs, setTextDocs] = useState({})
-  const [showingText, setShowingText] = useState({})
 
   const loadDoc = async (type, id) => {
     if (loadedDocs[id] !== undefined) return
@@ -53,13 +53,10 @@ export default function Documents() {
         : `${API}/documents/cover-letters/${id}`
       const res = await fetch(url)
       const data = await res.json()
-      setLoadedDocs((prev) => ({ ...prev, [id]: data.content }))
+      setLoadedDocs((prev) => ({ ...prev, [id]: data }))
       setLocalEdits((prev) => ({ ...prev, [id]: data.content }))
-      if (data.text_content) {
-        setTextDocs((prev) => ({ ...prev, [id]: data.text_content }))
-      }
     } catch {
-      setLoadedDocs((prev) => ({ ...prev, [id]: '' }))
+      setLoadedDocs((prev) => ({ ...prev, [id]: null }))
     }
     setLoading((prev) => ({ ...prev, [id]: false }))
   }
@@ -75,7 +72,7 @@ export default function Documents() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: localEdits[id] }),
       })
-      setLoadedDocs((prev) => ({ ...prev, [id]: localEdits[id] }))
+      setLoadedDocs((prev) => ({ ...prev, [id]: { ...prev[id], content: localEdits[id] } }))
     } catch {}
     setSaving(null)
     setEditingId(null)
@@ -109,8 +106,6 @@ export default function Documents() {
     fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11,
   })
 
-  const isHtml = (content) => typeof content === 'string' && content.trimStart().startsWith('<!DOCTYPE')
-
   const emptyState = (msg) => (
     <div style={{ textAlign: 'center', padding: '40px 20px' }}>
       <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
@@ -120,7 +115,6 @@ export default function Documents() {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f5f4f0' }}>
-      {previewHtml && <ResumePreviewModal htmlContent={previewHtml} onClose={() => setPreviewHtml(null)} />}
       <div style={{ padding: '16px 20px 0' }}>
         <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 800, fontSize: 22, color: '#0c0e1c', marginBottom: 14 }}>Documents</div>
         <div style={{ display: 'flex', background: '#fff', borderRadius: 14, padding: 4, marginBottom: 16, boxShadow: '0 2px 10px rgba(12,14,28,0.06)' }}>
@@ -137,30 +131,37 @@ export default function Documents() {
 
         {tab === 'resume' && (
           <>
-            {baseContent ? (
+            {/* Base resume card */}
+            {(baseContent || profile?.resume_base_id) ? (
               <div style={cardStyle}>
                 <div style={headerStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={labelStyle}>Your Resume</span>
-                    <span style={{ background: '#f0effb', color: accent, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11, padding: '2px 8px', borderRadius: 10 }}>Base</span>
+                    <span style={{ background: '#f0effb', color: accent, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: 11, padding: '2px 8px', borderRadius: 10 }}>Original</span>
                   </div>
-                  {baseContent && (
-                    <button onClick={() => downloadDoc(baseContent, 'resume.txt')} style={actionBtn(true)}>
-                      ↓ Download
-                    </button>
-                  )}
-                  <button onClick={() => setEditingBase((v) => !v)} style={actionBtn(false)}>
-                    {editingBase ? 'Done' : 'Edit'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {profile?.resume_base_id && (
+                      <button
+                        onClick={() => openDownload(`${API}/documents/resumes/${profile.resume_base_id}/download`)}
+                        style={{ ...actionBtn(true), background: accent, color: '#fff' }}
+                      >
+                        ↓ Download Original
+                      </button>
+                    )}
+                    {baseContent && (
+                      <button onClick={() => setEditingBase((v) => !v)} style={actionBtn(false)}>
+                        {editingBase ? 'Done' : 'View'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {editingBase ? (
-                  <textarea
-                    value={baseContent}
-                    onChange={(e) => setBaseContent(e.target.value)}
-                    style={{ ...textareaStyle, minHeight: 200 }}
-                  />
-                ) : (
+                {editingBase && baseContent && (
                   <div style={{ ...bodyStyle, maxHeight: 200, overflowY: 'auto' }}>{baseContent}</div>
+                )}
+                {!editingBase && (
+                  <div style={{ padding: '10px 14px', fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#9a9fa8' }}>
+                    Your uploaded resume. Use <strong>Download Original</strong> to get the exact file you uploaded.
+                  </div>
                 )}
               </div>
             ) : (
@@ -176,8 +177,8 @@ export default function Documents() {
             {appsWithVariants.map((app) => {
               const id = app.resume_variant_id
               const isEditing = editingId === id
-              const content = loadedDocs[id]
-              const htmlResume = content !== undefined && isHtml(content)
+              const doc = loadedDocs[id]
+              const content = doc?.content
               const slug = app.company.toLowerCase().replace(/\s+/g, '_')
               return (
                 <div key={id} style={cardStyle}>
@@ -187,43 +188,31 @@ export default function Documents() {
                       <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#9a9fa8' }}>{app.title}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      {content === undefined && !loading[id] && (
-                        <button onClick={() => loadDoc('variant', id)} style={actionBtn(true)}>View</button>
+                      {doc === undefined && !loading[id] && (
+                        <button onClick={() => loadDoc('variant', id)} style={actionBtn(true)}>Load</button>
                       )}
-                      {content !== undefined && !isEditing && htmlResume && (
+                      {doc !== undefined && !isEditing && (
                         <>
                           <button
-                            onClick={() => setPreviewHtml(content)}
+                            onClick={() => openDownload(`${API}/documents/variants/${id}/download`)}
                             style={{ ...actionBtn(true), background: accent, color: '#fff' }}
                           >
-                            Preview
+                            ↓ Tailored .docx
                           </button>
                           <button
                             onClick={() => setShowingText((prev) => ({ ...prev, [id]: !prev[id] }))}
-                            style={actionBtn(showingText[id])}
+                            style={actionBtn(false)}
                           >
-                            {showingText[id] ? 'Hide Text' : 'Text'}
+                            {showingText[id] ? 'Hide' : 'View Text'}
                           </button>
-                          {textDocs[id] && (
+                          {content && (
                             <button
-                              onClick={() => downloadDoc(textDocs[id], `${slug}_resume.txt`)}
+                              onClick={() => downloadText(content, `${slug}_resume.txt`)}
                               style={actionBtn(false)}
                             >
                               ↓ .txt
                             </button>
                           )}
-                          <button
-                            onClick={() => downloadDoc(content, `${slug}_resume.html`)}
-                            style={actionBtn(false)}
-                          >
-                            ↓ .html
-                          </button>
-                        </>
-                      )}
-                      {content !== undefined && !isEditing && !htmlResume && (
-                        <>
-                          <button onClick={() => downloadDoc(content, `${slug}_resume.txt`)} style={actionBtn(true)}>↓</button>
-                          <button onClick={() => setEditingId(id)} style={actionBtn(false)}>Edit</button>
                         </>
                       )}
                       {isEditing && (
@@ -239,17 +228,14 @@ export default function Documents() {
                   {loading[id] && (
                     <div style={{ padding: '14px', fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8' }}>Loading…</div>
                   )}
-                  {content !== undefined && !isEditing && !htmlResume && (
-                    <div style={{ ...bodyStyle, maxHeight: 180, overflowY: 'auto' }}>{content}</div>
-                  )}
-                  {content !== undefined && !isEditing && htmlResume && !showingText[id] && (
+                  {doc !== undefined && !isEditing && !showingText[id] && (
                     <div style={{ padding: '10px 14px', fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#9a9fa8' }}>
-                      Executive Signal template ready. Click <strong>Preview</strong> to view and save as PDF, or <strong>Text</strong> for a plain-text version.
+                      Tailored for this role. <strong>↓ Tailored .docx</strong> downloads a Word file you can open, edit, and save as PDF. <strong>View Text</strong> shows the plain-text version.
                     </div>
                   )}
-                  {content !== undefined && !isEditing && htmlResume && showingText[id] && (
+                  {doc !== undefined && !isEditing && showingText[id] && (
                     <div style={{ ...bodyStyle, maxHeight: 260, overflowY: 'auto' }}>
-                      {textDocs[id] || '(Text version not available — regenerate docs to create one.)'}
+                      {content || '(Text not available — regenerate docs to create one.)'}
                     </div>
                   )}
                   {isEditing && (
@@ -263,7 +249,8 @@ export default function Documents() {
               )
             })}
 
-            {!baseContent && appsWithVariants.length === 0 && emptyState('No documents yet. Queue a job on Discover to generate tailored materials.')}
+            {!baseContent && !profile?.resume_base_id && appsWithVariants.length === 0 &&
+              emptyState('No documents yet. Queue a job on Discover to generate tailored materials.')}
           </>
         )}
 
@@ -274,7 +261,8 @@ export default function Documents() {
               : appsWithCoverLetters.map((app) => {
                 const id = app.cover_letter_id
                 const isEditing = editingId === id
-                const content = loadedDocs[id]
+                const doc = loadedDocs[id]
+                const content = doc?.content
                 return (
                   <div key={id} style={cardStyle}>
                     <div style={headerStyle}>
@@ -283,12 +271,12 @@ export default function Documents() {
                         <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#9a9fa8' }}>{app.title}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        {content === undefined && !loading[id] && (
+                        {doc === undefined && !loading[id] && (
                           <button onClick={() => loadDoc('cl', id)} style={actionBtn(true)}>View</button>
                         )}
-                        {content !== undefined && !isEditing && (
+                        {doc !== undefined && !isEditing && (
                           <>
-                            <button onClick={() => downloadDoc(content, `${app.company.toLowerCase().replace(/\s+/g, '_')}_cover_letter.txt`)} style={actionBtn(true)}>↓</button>
+                            <button onClick={() => downloadText(content, `${app.company.toLowerCase().replace(/\s+/g, '_')}_cover_letter.txt`)} style={actionBtn(true)}>↓</button>
                             <button onClick={() => setEditingId(id)} style={actionBtn(false)}>Edit</button>
                           </>
                         )}
@@ -305,7 +293,7 @@ export default function Documents() {
                     {loading[id] && (
                       <div style={{ padding: '14px', fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#9a9fa8' }}>Loading…</div>
                     )}
-                    {content !== undefined && !isEditing && (
+                    {doc !== undefined && !isEditing && (
                       <div style={{ ...bodyStyle, maxHeight: 220, overflowY: 'auto' }}>{content}</div>
                     )}
                     {isEditing && (
